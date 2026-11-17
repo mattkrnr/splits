@@ -1,0 +1,33 @@
+name: Garmin sync
+
+on:
+  schedule:
+    - cron: "23 10 * * *"   # every day at 10:23 UTC (5:23 AM Eastern, 6:23 AM in summer)
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Days back to pull (use 365 for a first backfill)"
+        default: "3"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: garmin-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Pull Garmin and write to Supabase
+        env:
+          GARMIN_PERSONAL_API_KEY: ${{ secrets.GARMIN_PERSONAL_API_KEY }}
+          SPLITS_SYNC_TOKEN: ${{ secrets.SPLITS_SYNC_TOKEN }}
+          SYNC_DAYS: ${{ github.event.inputs.days || '3' }}
+        run: python sync/garmin_sync.py

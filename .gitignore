@@ -1,0 +1,7 @@
+# Never commit personal data or keys
+garmin.json
+*.key
+.env
+connect-personal-api-key
+__pycache__/
+.DS_Store

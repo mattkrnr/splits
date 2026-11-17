@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Splits">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Splits</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: phone-first single column, sticky tab rail, stopwatch-style numerals for every figure */
+:root{
+  --bg:#F3F5F8; --surface:#FFFFFF; --ink:#16202C; --muted:#5B6878; --line:#DDE3EA;
+  --run:#2C55D6; --run-soft:#E3EAFC; --lift:#0E8A73; --lift-soft:#DDF2EC;
+  --sleep:#5E4BC4; --sleep-soft:#ECE8FA; --other:#9A5B13; --other-soft:#F7ECDD;
+  --warn:#B4610B; --warn-soft:#FBEBD8;
+  --f-display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F151D; --surface:#17202B; --ink:#E6ECF3; --muted:#93A1B2; --line:#283444;
+  --run:#7E9CFF; --run-soft:#1E2A4A; --lift:#4CC9A9; --lift-soft:#143530;
+  --sleep:#A99CFF; --sleep-soft:#262148; --other:#E2A95E; --other-soft:#3A2C17;
+  --warn:#F0A55A; --warn-soft:#3A2A16; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F151D; --surface:#17202B; --ink:#E6ECF3; --muted:#93A1B2; --line:#283444;
+  --run:#7E9CFF; --run-soft:#1E2A4A; --lift:#4CC9A9; --lift-soft:#143530;
+  --sleep:#A99CFF; --sleep-soft:#262148; --other:#E2A95E; --other-soft:#3A2C17;
+  --warn:#F0A55A; --warn-soft:#3A2A16; color-scheme:dark}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+header.top .wrap{padding-block:12px 0;display:flex;flex-direction:column;gap:10px}
+.brand{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand h1{font:700 30px/1 var(--f-display);letter-spacing:.02em;margin:0;text-transform:uppercase}
+.brand h1 span{color:var(--run)}
+.brand small{font:500 12px var(--f-mono);color:var(--muted)}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.tabs button{flex:0 0 auto;border:0;background:none;color:var(--muted);font:600 15px var(--f-display);letter-spacing:.08em;text-transform:uppercase;padding:8px 9px 10px;border-bottom:3px solid transparent;cursor:pointer}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--run)}
+nav.tabs button:focus-visible,button:focus-visible,label.btn:focus-within{outline:2px solid var(--run);outline-offset:2px}
+main .wrap{display:flex;flex-direction:column;gap:20px;padding-top:20px}
+.view{display:flex;flex-direction:column;gap:20px}
+h2{font:700 22px/1.1 var(--f-display);letter-spacing:.04em;text-transform:uppercase;margin:0;text-wrap:balance}
+h3{font:600 13px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0}
+p{margin:0;max-width:65ch}
+.muted{color:var(--muted)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.between{justify-content:space-between}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.stat{background:var(--surface);padding:12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat b{font:600 30px/1 var(--f-display);font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:6px;font:500 11px var(--f-mono);text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.chip.sample{border:1px dashed var(--muted);color:var(--muted)}
+.chip.real{background:var(--lift-soft);color:var(--lift)}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.day{border:1px solid var(--line);border-radius:8px;padding:8px 3px;display:flex;flex-direction:column;align-items:center;gap:5px;min-height:96px;background:var(--surface);min-width:0}
+.day.today{border-color:var(--run);box-shadow:inset 0 0 0 1px var(--run)}
+.day .d{font:600 14px var(--f-display);letter-spacing:.06em;color:var(--muted)}
+.day .n{font:500 12px var(--f-mono)}
+.dot{width:100%;font:600 10px var(--f-mono);text-align:center;border-radius:4px;padding:2px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot.run{background:var(--run);color:var(--surface)}
+.dot.lift{background:var(--lift);color:var(--surface)}
+.dot.other{background:var(--other-soft);color:var(--other)}
+.dot.sleep{color:var(--sleep);font-weight:500}
+.dot.plan{border:1px dashed var(--run);color:var(--run)}
+.next{border-left:4px solid var(--run)}
+.next .big{font:700 26px/1.1 var(--f-display);text-transform:uppercase;letter-spacing:.02em}
+.list{display:flex;flex-direction:column}
+.list .item{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}
+.list .item:last-child{border-bottom:0}
+.list .item span:last-child{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:14px}
+.tablebox{overflow-x:auto}
+th{font:600 11px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td.num,th.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--ink);background:var(--ink);color:var(--surface);font:600 14px var(--f-body);padding:9px 14px;border-radius:8px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.danger{background:var(--warn);border-color:var(--warn);color:var(--surface)}
+label.btn{position:relative}
+label.btn input{position:absolute;opacity:0;width:1px;height:1px}
+.goal{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.goal input{font:500 16px var(--f-mono);width:6.5em;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+svg text{fill:var(--muted);font:11px var(--f-mono)}
+.chart{width:100%;height:auto;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+ol.steps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:10px}
+code,pre{font:13px var(--f-mono)}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;margin:6px 0 0;white-space:pre}
+.note{font-size:13px;padding:10px 12px;border-radius:8px;background:var(--warn-soft);color:var(--ink)}
+.phase{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}
+.phase .tag{font:700 14px var(--f-display);letter-spacing:.06em;padding:4px 8px;border-radius:6px;background:var(--run-soft);color:var(--run);white-space:nowrap}
+.phase.done .tag{background:var(--lift-soft);color:var(--lift)}
+.phase.now .tag{background:var(--other-soft);color:var(--other)}
+.phase ul{margin:4px 0 0;padding-left:18px}
+.toast{min-height:1.5em;font-size:13px;color:var(--lift)}
+.toast.err{color:var(--warn)}
+.auth{border-left:4px solid var(--run)}
+.linkbtn{border:0;background:none;color:var(--muted);font:500 12px var(--f-mono);cursor:pointer;padding:2px 4px;text-decoration:underline}
+.idbox{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.idbox code{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 8px;word-break:break-all;min-width:0}
+details summary{cursor:pointer}
+@media (max-width:420px){.stat b{font-size:24px}.day{min-height:90px}}
+@media (prefers-reduced-motion:no-preference){nav.tabs button{transition:color .15s,border-color .15s}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+</body>
+</html>
+<script src="config.js"></script>
+</body>
+</html>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><h1>Split<span>s</span></h1><span><small id="srcSummary">loading…</small> <button class="linkbtn" id="signOutBtn" type="button" hidden>Sign out</button></span></div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" id="tab-today" aria-selected="true" data-view="today">Today</button>
+      <button role="tab" id="tab-run" aria-selected="false" data-view="run">Running</button>
+      <button role="tab" id="tab-lift" aria-selected="false" data-view="lift">Strength</button>
+      <button role="tab" id="tab-sleep" aria-selected="false" data-view="sleep">Sleep</button>
+      <button role="tab" id="tab-connect" aria-selected="false" data-view="connect">Connect</button>
+      <button role="tab" id="tab-plan" aria-selected="false" data-view="plan">Roadmap</button>
+    </nav>
+  </div>
+</header>
+
+<main><div class="wrap">
+
+<div class="panel auth" id="authPanel" hidden>
+  <h3 id="authTitle">Sign in</h3>
+  <p id="authText"></p>
+  <div class="row"><button class="btn" id="signInBtn" type="button">Sign in with Google</button><button class="btn ghost" id="retryBtn" type="button" hidden>Try again</button></div>
+</div>
+
+<section class="view" id="view-today">
+  <div class="panel next">
+    <h3>Next up</h3>
+    <div class="big" id="nextTitle"></div>
+    <p class="muted" id="nextWhy"></p>
+  </div>
+  <div class="panel">
+    <div class="row between"><h3>This week</h3><span class="muted" style="font-size:12px">Dashed = planned run day · ☾ = sleep</span></div>
+    <div class="week" id="weekStrip"></div>
+  </div>
+  <div class="stats" id="todayStats"></div>
+  <div class="panel"><div class="row between"><h3>Other activity, last 14 days</h3><span id="otherChip"></span></div><div class="list" id="otherList"></div></div>
+</section>
+
+<section class="view" id="view-run" hidden>
+  <div class="row between"><h2>Running</h2><span id="runChip"></span></div>
+  <div class="panel"><h3>Weekly miles, last 8 weeks</h3><svg class="chart" id="milesChart" viewBox="0 0 640 200" role="img" aria-label="Weekly miles chart"></svg></div>
+  <div class="panel"><h3>Avg pace per run (min/mi)</h3><svg class="chart" id="paceChart" viewBox="0 0 640 200" role="img" aria-label="Pace trend chart"></svg></div>
+  <div class="panel">
+    <h3>Mile goal</h3>
+    <div class="goal"><label for="goalMile">Target mile</label><input id="goalMile" value="4:38" inputmode="numeric" aria-describedby="goalHint"><span class="muted" id="goalHint"></span></div>
+  </div>
+  <div class="panel"><h3>Recent runs</h3><div class="tablebox"><table id="runTable"></table></div></div>
+</section>
+
+<section class="view" id="view-lift" hidden>
+  <div class="row between"><h2>Strength</h2><span id="liftChip"></span></div>
+  <div class="panel">
+    <div class="row between">
+      <h3>Fitbod import</h3>
+      <label class="btn" for="fitbodFile">Upload WorkoutExport.csv<input type="file" id="fitbodFile" accept=".csv,text/csv"></label>
+    </div>
+    <p class="muted" style="font-size:13px">Easiest on your phone: in Fitbod, Settings → Export Workout Data → Save to Files, then open Splits and upload it here. Each upload replaces your earlier Fitbod data.</p>
+    <div class="toast" id="fitbodToast" role="status"></div>
+  </div>
+  <div class="panel"><h3>Weekly volume (lb × reps, warm-ups excluded)</h3><svg class="chart" id="volChart" viewBox="0 0 640 200" role="img" aria-label="Weekly lifting volume"></svg></div>
+  <div class="panel"><h3>Best estimated 1RM by exercise</h3><div class="tablebox"><table id="prTable"></table></div></div>
+  <div class="panel"><h3>Recent sessions</h3><div class="tablebox"><table id="sessTable"></table></div></div>
+</section>
+
+<section class="view" id="view-sleep" hidden>
+  <div class="row between"><h2>Sleep</h2><span id="sleepChip"></span></div>
+  <div class="stats" id="sleepStats"></div>
+  <div class="panel">
+    <h3>Last 14 nights (hours)</h3>
+    <svg class="chart" id="sleepChart" viewBox="0 0 640 220" role="img" aria-label="Sleep per night"></svg>
+    <div class="legend" id="sleepLegend"></div>
+  </div>
+  <div class="panel"><h3>Nights</h3><div class="tablebox"><table id="sleepTable"></table></div></div>
+</section>
+
+<section class="view" id="view-connect" hidden>
+  <h2>Connect your data</h2>
+  <div class="panel">
+    <div class="row between"><h3>Your account</h3><span id="acctChip"></span></div>
+    <p id="acctText"></p>
+    <div id="tokenArea" hidden>
+      <p class="muted" style="font-size:13px">The daily Garmin sync needs a sync token. It can only add your fitness data and can't read anything. Put it in the repo secret <code>SPLITS_SYNC_TOKEN</code>.</p>
+      <div class="row"><button class="btn ghost" id="newToken" type="button">Create sync token</button><button class="btn danger" id="newTokenConfirm" type="button" hidden>Replace old token</button></div>
+      <div class="idbox" id="idBox" hidden><code id="userId"></code><button class="btn ghost" id="copyId" type="button">Copy</button></div>
+      <p class="toast" id="tokenNote" role="status"></p>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="row between"><h3>Garmin · daily auto-sync</h3><span id="garminChip"></span></div>
+    <p id="syncText"></p>
+    <p class="muted" style="font-size:13px">A GitHub Action pulls your runs, other activities and sleep every morning around 5:30. To pull now or backfill a year: repo → Actions → Garmin sync → Run workflow.</p>
+    <details>
+      <summary><b>Upload Garmin data by hand instead</b></summary>
+      <p class="muted" style="font-size:13px;margin-top:8px">Use this if the auto-sync can't reach Garmin. Run <code>garmin_pull.py</code> from the repo on any computer (or in a-Shell on iPhone): <code>python3 garmin_pull.py --save-key</code> once, then <code>python3 garmin_pull.py --days 90</code>, and upload the <code>garmin.json</code> it writes.</p>
+      <div class="row" style="margin-top:8px"><label class="btn ghost" for="garminFile">Upload garmin.json<input type="file" id="garminFile" accept=".json,application/json"></label></div>
+    </details>
+    <div class="toast" id="garminToast" role="status"></div>
+  </div>
+  <div class="panel">
+    <div class="row between"><h3>Fitbod · lifts</h3><span id="fitbodChip"></span></div>
+    <p class="muted" style="font-size:13px">In Fitbod: Settings → Export Workout Data → Save to Files. Each upload replaces your earlier Fitbod data.</p>
+    <div class="row"><label class="btn ghost" for="fitbodFile2">Upload WorkoutExport.csv<input type="file" id="fitbodFile2" accept=".csv,text/csv"></label></div>
+  </div>
+  <div class="panel">
+    <h3>Clear imported data</h3>
+    <p class="muted" style="font-size:13px">Deletes your Garmin and Fitbod data from the database. The next daily sync brings back the last few days of Garmin data.</p>
+    <div class="row"><button class="btn ghost" id="resetBtn" type="button">Clear my data</button><button class="btn danger" id="resetConfirm" type="button" hidden>Yes, clear it</button></div>
+  </div>
+</section>
+
+<section class="view" id="view-plan" hidden>
+  <h2>Roadmap</h2>
+  <div class="panel phase done"><span class="tag">PHASE 1</span><div><b>Prototype</b><ul><li>Today, Running, Strength views</li><li>Fitbod CSV import</li></ul></div></div>
+  <div class="panel phase done"><span class="tag">PHASE 2</span><div><b>Your real data, everywhere</b><ul><li>Sleep and every activity type</li><li>GitHub Pages + Supabase, Google sign-in</li></ul></div></div>
+  <div class="panel phase now"><span class="tag">PHASE 2.5</span><div><b>Hands-off Garmin</b><ul><li>Daily GitHub Action sync</li><li>Next: first real run and field check</li></ul></div></div>
+  <div class="panel phase"><span class="tag">PHASE 3</span><div><b>Your coach</b><ul><li>Bring in the AI Fitness Coach logic, for you only</li><li>Read sleep as capacity and shrink sessions when it's low</li><li>Plan run and lift days toward the mile goal</li></ul></div></div>
+</section>
+</div></main>
+
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const DAY=86400000, M_PER_MI=1609.344, KG2LB=2.20462;
+const fmtPace=s=>{if(!isFinite(s)||s<=0)return"–";s=Math.round(s);return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")};
+const fmtHM=s=>{if(!isFinite(s)||s<=0)return"–";const m=Math.round(s/60);return Math.floor(m/60)+":"+String(m%60).padStart(2,"0")};
+const parseClock=t=>{const m=String(t).trim().match(/^(\d+):(\d{1,2})$/);return m?(+m[1])*60+(+m[2]):NaN};
+const ymd=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const ym=d=>ymd(d).slice(0,7);
+const startOfWeek=d=>{const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());const wd=(x.getDay()+6)%7;return new Date(x-wd*DAY)};
+const localDate=s=>{const m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?new Date(+m[1],m[2]-1,+m[3]):new Date(s)};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const short=d=>d.toLocaleDateString(undefined,{month:"short",day:"numeric"});
+const local={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const TYPE_LABEL={running:"Run",treadmill_running:"Treadmill",track_running:"Track",trail_running:"Trail run",cycling:"Bike",indoor_cycling:"Indoor bike",walking:"Walk",hiking:"Hike",strength_training:"Strength",lap_swimming:"Swim",open_water_swimming:"Swim",yoga:"Yoga",elliptical:"Elliptical",hiit:"HIIT",indoor_rowing:"Row",pickleball:"Pickleball",tennis:"Tennis",basketball:"Basketball",soccer:"Soccer",golf:"Golf"};
+const label=t=>TYPE_LABEL[t]||String(t||"activity").replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase());
+const isRun=t=>String(t).includes("run");
+
+/* ---------- sample data (labeled in the UI) ---------- */
+function seeded(n){let s=n;return()=>{s=(s*16807)%2147483647;return(s-1)/2147483646}}
+function sampleGarmin(){
+  const r=seeded(42),acts=[],sleep=[],today=new Date(),start=startOfWeek(new Date(today-7*7*DAY));
+  for(let d=new Date(start);d<=today;d=new Date(+d+DAY)){
+    const wd=(d.getDay()+6)%7,wk=Math.floor((d-start)/(7*DAY));
+    const night={cal:ymd(d)};const tot=(5.9+r()*2.1)*3600;
+    Object.assign(night,{sec:tot,deep:tot*.17,rem:tot*.22,light:tot*.55,awake:tot*.06,score:Math.round(55+(tot/3600-5.9)*15+r()*8)});
+    sleep.push(night);
+    if([0,2,4].includes(wd)&&r()>.18){const interval=wd===2&&wk%2===1;const miles=interval?2.6+r()*.4:2.8+wk*.12+r()*.6;const pace=interval?(420-wk*3+r()*15):(540-wk*4+r()*25);
+      const t=new Date(d);t.setHours(7,10);acts.push({date:t,type:interval?"track_running":"running",name:interval?"Track intervals":"Morning easy run",miles,sec:miles*pace,hr:interval?168:146+Math.round(r()*8)})}
+    if(wd===5&&r()>.3){const t=new Date(d);t.setHours(10,0);acts.push({date:t,type:"walking",name:"Walk with the dog",miles:1.8+r(),sec:2400+r()*600,hr:98})}
+    if(wd===6&&r()>.5){const t=new Date(d);t.setHours(11,0);acts.push({date:t,type:"cycling",name:"Easy ride",miles:9+r()*4,sec:2700+r()*900,hr:128})}
+  }return{acts,sleep};
+}
+function sampleLifts(){
+  const r=seeded(7),rows=[],today=new Date();const ex=[["Barbell Bench Press",135],["Back Squat",165],["Deadlift",205],["Dumbbell Row",50],["Overhead Press",85],["Romanian Deadlift",145]];
+  for(let w=7;w>=0;w--){for(const wd of[1,3]){
+    const d=new Date(startOfWeek(today)-w*7*DAY+wd*DAY);if(d>today)continue;if(r()<0.15)continue;d.setHours(18,0);
+    for(const i of(wd===1?[0,3,4]:[1,2,5])){const[name,base]=ex[i];const wt=Math.round((base+(7-w)*2.5)/5)*5;
+      rows.push({date:d,exercise:name,reps:10,weight:Math.round(wt*.5/5)*5,warmup:true});
+      for(let s=0;s<3;s++)rows.push({date:d,exercise:name,reps:8-(s===2&&r()<.4?1:0),weight:wt,warmup:false});}
+  }}return rows;
+}
+
+/* ---------- Fitbod CSV ---------- */
+function parseCSV(text){
+  const rows=[];let row=[],f="",q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){f+='"';i++}else q=false}else f+=c}
+    else if(c==='"')q=true;else if(c===","){row.push(f);f=""}
+    else if(c==="\n"||c==="\r"){if(c==="\r"&&text[i+1]==="\n")i++;row.push(f);f="";if(row.some(x=>x!==""))rows.push(row);row=[]}
+    else f+=c}
+  row.push(f);if(row.some(x=>x!==""))rows.push(row);return rows;
+}
+function parseFitbod(text){
+  const rows=parseCSV(text.replace(/^﻿/,""));if(rows.length<2)throw new Error("The file has no data rows.");
+  const h=rows[0].map(x=>x.trim().toLowerCase()),find=(...k)=>h.findIndex(x=>k.some(s=>x.includes(s)));
+  const iD=find("date"),iE=find("exercise"),iR=find("rep"),iW=find("weight"),iWu=find("warm"),iM=find("multiplier");
+  if(iD<0||iE<0||iR<0||iW<0)throw new Error("Couldn't find Date, Exercise, Reps and Weight columns. Found: "+rows[0].join(", "));
+  const kg=/kg/.test(h[iW]),out=[];
+  for(const r of rows.slice(1)){const d=new Date(r[iD]);if(isNaN(d))continue;
+    let w=parseFloat(r[iW])||0;if(kg)w*=KG2LB;const mult=iM>=0?parseFloat(r[iM])||1:1;
+    out.push({date:d,exercise:(r[iE]||"").trim(),reps:parseFloat(r[iR])||0,weight:Math.round(w*mult*10)/10,warmup:iWu>=0&&/true|1|yes/i.test(r[iWu]||"")})}
+  if(!out.length)throw new Error("No rows had a readable date.");
+  return{rows:out,unit:kg?"kg, converted to lb":"lb"};
+}
+
+/* ---------- Garmin JSON (from garmin_pull.py) ---------- */
+function collectSleep(node,out){
+  if(Array.isArray(node)){node.forEach(n=>collectSleep(n,out));return}
+  if(!node||typeof node!=="object")return;
+  const cal=node.calendarDate,sec=node.sleepTimeSeconds??node.totalSleepSeconds??node.sleepTimeInSeconds;
+  if(cal&&typeof sec==="number"){
+    const sc=node.sleepScores&&node.sleepScores.overall?node.sleepScores.overall.value:(node.overallSleepScore&&typeof node.overallSleepScore==="object"?node.overallSleepScore.value:node.sleepScore??node.overallSleepScore);
+    out.push({cal:String(cal).slice(0,10),sec,deep:node.deepSleepSeconds??null,light:node.lightSleepSeconds??null,rem:node.remSleepSeconds??null,awake:node.awakeSleepSeconds??null,score:typeof sc==="number"?sc:null});return}
+  for(const v of Object.values(node))if(v&&typeof v==="object")collectSleep(v,out);
+}
+function parseGarmin(obj){
+  const list=Array.isArray(obj)?obj:(obj.activities||[]),acts=[];
+  for(const a of list){
+    const type=String((a.activityType&&(a.activityType.typeKey||a.activityType))||a.activityTypeKey||"other").toLowerCase();
+    const d=new Date(String(a.startTimeLocal||a.startTimeGMT||a.startTime||"").replace(" ","T"));if(isNaN(d))continue;
+    const meters=+a.distance||0,sec=+(a.duration||a.movingDuration||a.elapsedDuration)||0;
+    acts.push({id:a.activityId?String(a.activityId):null,date:d,type,name:a.activityName||label(type),miles:meters?meters/M_PER_MI:null,sec,hr:a.averageHR||a.averageHeartRate||null,raw:a});
+  }
+  const sleep=[];collectSleep(Array.isArray(obj)?[]:obj.sleep,sleep);
+  const seen=new Map();for(const s of sleep)if(!seen.has(s.cal)||s.sec>seen.get(s.cal).sec)seen.set(s.cal,s);
+  if(!acts.length&&!seen.size)throw new Error("Found no activities or sleep nights in this file. Make sure it's the garmin.json from the script.");
+  return{acts,sleep:[...seen.values()]};
+}
+
+/* ---------- storage: Supabase, every row scoped to the signed-in user ---------- */
+const cfg=window.SPLITS_CONFIG||{};
+let sb=null,user=null,syncRow=null,loadState="starting",loadErr="";
+const state={acts:[],sleep:[],lifts:[],gSrc:"sample",fSrc:"sample"};
+let real={acts:[],sleep:[],lifts:[]};
+function applyData(){
+  if(real.acts.length||real.sleep.length){state.acts=real.acts;state.sleep=real.sleep;state.gSrc="Garmin"}else{const s=sampleGarmin();state.acts=s.acts;state.sleep=s.sleep;state.gSrc="sample"}
+  if(real.lifts.length){state.lifts=real.lifts;state.fSrc="Fitbod"}else{state.lifts=sampleLifts();state.fSrc="sample"}
+  state.acts.sort((a,b)=>a.date-b.date);state.sleep.sort((a,b)=>a.cal<b.cal?-1:1);state.lifts.sort((a,b)=>a.date-b.date);
+  render();
+}
+async function fetchAll(table,cols,order){
+  const out=[];
+  for(let from=0;;from+=1000){const{data,error}=await sb.from(table).select(cols).order(order).range(from,from+999);if(error)throw error;out.push(...data);if(data.length<1000)break}
+  return out;
+}
+async function loadData(){
+  loadState="loading";render();
+  try{
+    const[a,s,l,st]=await Promise.all([
+      fetchAll("splits_activities","id,start_time,type,name,meters,seconds,avg_hr","start_time"),
+      fetchAll("splits_sleep_nights","cal,seconds,deep,light,rem,awake,score","cal"),
+      fetchAll("splits_lift_sets","id,performed_at,exercise,reps,weight_lb,warmup","performed_at"),
+      sb.from("splits_sync_status").select("last_run,ok,message").maybeSingle()]);
+    real.acts=a.map(r=>({id:r.id,date:new Date(r.start_time),type:r.type,name:r.name||label(r.type),miles:r.meters?r.meters/M_PER_MI:null,sec:r.seconds||0,hr:r.avg_hr}));
+    real.sleep=s.map(r=>({cal:r.cal,sec:r.seconds,deep:r.deep,light:r.light,rem:r.rem,awake:r.awake,score:r.score}));
+    real.lifts=l.map(r=>({date:new Date(r.performed_at),exercise:r.exercise,reps:r.reps,weight:r.weight_lb,warmup:r.warmup}));
+    syncRow=st.data||null;loadState="ready";
+  }catch(e){loadState="error";loadErr=e&&e.message||String(e)}
+  applyData();
+}
+async function inChunks(rows,n,fn){for(let i=0;i<rows.length;i+=n){const{error}=await fn(rows.slice(i,i+n));if(error)throw error}}
+async function importGarmin(p){
+  const now=new Date().toISOString(),uid=user.id;
+  const arows=p.acts.filter(a=>a.id).map(a=>({user_id:uid,id:a.id,start_time:a.date.toISOString(),type:a.type,name:a.name,meters:a.miles==null?null:a.miles*M_PER_MI,seconds:a.sec,avg_hr:a.hr,raw:a.raw||null,updated_at:now}));
+  const srows=p.sleep.map(s=>({user_id:uid,cal:s.cal,seconds:Math.round(s.sec),deep:s.deep,light:s.light,rem:s.rem,awake:s.awake,score:s.score,updated_at:now}));
+  await inChunks(arows,200,c=>sb.from("splits_activities").upsert(c,{onConflict:"user_id,id"}));
+  await inChunks(srows,500,c=>sb.from("splits_sleep_nights").upsert(c,{onConflict:"user_id,cal"}));
+  await loadData();
+  return{acts:arows.length,skipped:p.acts.length-arows.length,sleep:srows.length};
+}
+async function importFitbod(rows){
+  const uid=user.id;
+  const del=await sb.from("splits_lift_sets").delete().eq("user_id",uid);if(del.error)throw del.error;
+  await inChunks(rows.map(r=>({user_id:uid,performed_at:r.date.toISOString(),exercise:r.exercise,reps:r.reps,weight_lb:r.weight,warmup:r.warmup})),500,c=>sb.from("splits_lift_sets").insert(c));
+  await loadData();
+}
+async function clearAll(){
+  for(const t of["splits_activities","splits_sleep_nights","splits_lift_sets"]){const{error}=await sb.from(t).delete().eq("user_id",user.id);if(error)throw error}
+  await loadData();
+}
+
+/* ---------- derived ---------- */
+const runs=()=>state.acts.filter(a=>isRun(a.type)&&a.miles>0&&a.sec>0);
+const others=()=>state.acts.filter(a=>!isRun(a.type));
+function sessions(){const m=new Map();for(const r of state.lifts){const k=ymd(r.date);if(!m.has(k))m.set(k,{date:r.date,sets:0,vol:0,ex:new Set()});const s=m.get(k);s.ex.add(r.exercise);if(!r.warmup){s.sets++;s.vol+=r.reps*r.weight}}return[...m.values()].sort((a,b)=>a.date-b.date)}
+function weeks(n){const out=[],w0=startOfWeek(new Date());for(let i=n-1;i>=0;i--)out.push(new Date(+w0-i*7*DAY));return out}
+function bucket(items,val,n){return weeks(n).map(w=>({w,v:items.filter(x=>x.date>=w&&x.date<new Date(+w+7*DAY)).reduce((a,x)=>a+val(x),0)}))}
+const sleepFor=d=>state.sleep.find(s=>s.cal===ymd(d));
+
+/* ---------- charts ---------- */
+function niceMax(v){if(v<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(v)));const m=v/p;return(m<=1?1:m<=2?2:m<=5?5:10)*p}
+function bars(svg,data,color,fmt){
+  const W=640,H=200,L=44,R=8,T=14,B=26,max=niceMax(Math.max(...data.map(d=>d.v),0)*1.1),bw=(W-L-R)/data.length;
+  let s="";for(let i=0;i<=4;i++){const v=max*i/4,y=H-B-(H-T-B)*i/4;s+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${L-6}" y="${y+4}" text-anchor="end">${fmt(v)}</text>`}
+  data.forEach((d,i)=>{const h=(H-T-B)*d.v/max,x=L+i*bw+bw*.18,last=i===data.length-1;
+    s+=`<rect x="${x}" y="${H-B-h}" width="${bw*.64}" height="${Math.max(h,0)}" rx="3" fill="${color}" opacity="${last?1:.55}"/>`;
+    s+=`<text x="${x+bw*.32}" y="${H-8}" text-anchor="middle">${d.w.getMonth()+1}/${d.w.getDate()}</text>`;
+    if(d.v>0)s+=`<text x="${x+bw*.32}" y="${H-B-h-4}" text-anchor="middle" style="fill:var(--ink)">${fmt(d.v)}</text>`});
+  svg.innerHTML=s;
+}
+function paceLine(svg,rs,goal){
+  const W=640,H=200,L=44,R=12,T=14,B=26,pts=rs.slice(-24).map(r=>({d:r.date,p:r.sec/r.miles}));
+  if(!pts.length){svg.innerHTML=`<text x="320" y="100" text-anchor="middle">No runs yet</text>`;return}
+  const vals=pts.map(p=>p.p).concat(isFinite(goal)?[goal]:[]);let lo=Math.floor(Math.min(...vals)/30)*30-30,hi=Math.ceil(Math.max(...vals)/30)*30;
+  const y=v=>T+(v-lo)/(hi-lo)*(H-T-B),x=i=>L+(pts.length===1?.5:i/(pts.length-1))*(W-L-R),step=(hi-lo)>240?60:30;
+  let s="";for(let v=lo;v<=hi;v+=step)s+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${fmtPace(v)}</text>`;
+  if(isFinite(goal))s+=`<line x1="${L}" x2="${W-R}" y1="${y(goal)}" y2="${y(goal)}" stroke="var(--warn)" stroke-dasharray="5 4"/><text x="${W-R}" y="${y(goal)-5}" text-anchor="end" style="fill:var(--warn)">goal mile ${fmtPace(goal)}</text>`;
+  s+=`<polyline fill="none" stroke="var(--run)" stroke-width="2" points="${pts.map((p,i)=>x(i)+","+y(p.p)).join(" ")}"/>`;
+  pts.forEach((p,i)=>{s+=`<circle cx="${x(i)}" cy="${y(p.p)}" r="${i===pts.length-1?4.5:2.5}" fill="var(--run)"/>`});
+  s+=`<text x="${L}" y="${H-8}">${pts[0].d.getMonth()+1}/${pts[0].d.getDate()}</text><text x="${W-R}" y="${H-8}" text-anchor="end">${pts[pts.length-1].d.getMonth()+1}/${pts[pts.length-1].d.getDate()}</text>`;
+  svg.innerHTML=s;
+}
+function sleepBars(svg,nights){
+  const W=640,H=220,L=36,R=8,T=14,B=26;
+  if(!nights.length){svg.innerHTML=`<text x="320" y="110" text-anchor="middle">No sleep data yet</text>`;$("#sleepLegend").innerHTML="";return}
+  const max=Math.max(10,Math.ceil(Math.max(...nights.map(n=>n.sec/3600))+.5)),bw=(W-L-R)/nights.length,y=h=>H-B-(H-T-B)*h/max;
+  const staged=nights.some(n=>n.deep!=null&&n.rem!=null&&n.light!=null);
+  const parts=[["deep","var(--sleep)",1],["rem","var(--sleep)",.6],["light","var(--sleep)",.3],["awake","var(--warn)",.45]];
+  let s="";for(let h=0;h<=max;h+=2)s+=`<line x1="${L}" x2="${W-R}" y1="${y(h)}" y2="${y(h)}" stroke="var(--line)"/><text x="${L-6}" y="${y(h)+4}" text-anchor="end">${h}</text>`;
+  s+=`<line x1="${L}" x2="${W-R}" y1="${y(7)}" y2="${y(7)}" stroke="var(--muted)" stroke-dasharray="3 4"/><text x="${W-R}" y="${y(7)-4}" text-anchor="end">7 h</text>`;
+  nights.forEach((n,i)=>{const x=L+i*bw+bw*.15,w=bw*.7,d=localDate(n.cal);
+    if(staged){let acc=0;for(const[k,c,o]of parts){const v=(n[k]||0)/3600;if(v<=0)continue;s+=`<rect x="${x}" y="${y(acc+v)}" width="${w}" height="${y(acc)-y(acc+v)}" fill="${c}" opacity="${o}"/>`;acc+=v}}
+    else s+=`<rect x="${x}" y="${y(n.sec/3600)}" width="${w}" height="${y(0)-y(n.sec/3600)}" rx="2" fill="var(--sleep)"/>`;
+    if(i%2===nights.length%2||nights.length<9)s+=`<text x="${x+w/2}" y="${H-8}" text-anchor="middle">${d.getMonth()+1}/${d.getDate()}</text>`});
+  svg.innerHTML=s;
+  $("#sleepLegend").innerHTML=staged?parts.map(([k,c,o])=>`<span><i style="background:${c};opacity:${o}"></i>${k==="rem"?"REM":k[0].toUpperCase()+k.slice(1)}</span>`).join(""):"";
+}
+
+/* ---------- render ---------- */
+const chip=src=>src==="sample"?'<span class="chip sample">Sample data</span>':'<span class="chip real">'+esc(src)+'</span>';
+function render(){
+  const goal=parseClock($("#goalMile").value),rs=runs(),ot=others(),sess=sessions(),today=new Date(),w0=startOfWeek(today);
+  $("#srcSummary").textContent=(state.gSrc==="sample"&&state.fSrc==="sample")?"showing sample data":"Garmin: "+(state.gSrc==="sample"?"sample":"yours")+" · Fitbod: "+(state.fSrc==="sample"?"sample":"yours");
+  ["#runChip","#otherChip","#sleepChip"].forEach(s=>$(s).innerHTML=chip(state.gSrc));["#liftChip","#fitbodChip"].forEach(s=>$(s).innerHTML=chip(state.fSrc));
+  $("#goalHint").textContent=isFinite(goal)?"dashed line on the pace chart":"use m:ss, like 4:38";
+  renderAccount();
+
+  // Today
+  const names=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],planned=[0,2,4];let strip="";
+  for(let i=0;i<7;i++){const d=new Date(+w0+i*DAY),k=ymd(d);
+    const r=rs.filter(x=>ymd(x.date)===k),o=ot.filter(x=>ymd(x.date)===k),l=sess.filter(x=>ymd(x.date)===k),sl=sleepFor(d);
+    let inner=(sl?`<div class="dot sleep">☾${fmtHM(sl.sec)}</div>`:"")+r.map(x=>`<div class="dot run">${x.miles.toFixed(1)} mi</div>`).join("")+l.map(()=>`<div class="dot lift">Lift</div>`).join("")+o.map(x=>`<div class="dot other" title="${esc(x.name)}">${esc(label(x.type))}</div>`).join("");
+    if(!r.length&&planned.includes(i)&&d>=new Date(ymd(today)))inner+=`<div class="dot plan">Run</div>`;
+    strip+=`<div class="day${k===ymd(today)?" today":""}"><span class="d">${names[i]}</span><span class="n">${d.getDate()}</span>${inner}</div>`}
+  $("#weekStrip").innerHTML=strip;
+  const wkMiles=rs.filter(x=>x.date>=w0).reduce((a,x)=>a+x.miles,0),wkLift=sess.filter(x=>x.date>=w0).length,lastNight=state.sleep[state.sleep.length-1];
+  $("#todayStats").innerHTML=`<div class="stat"><b>${wkMiles.toFixed(1)}</b><span>miles this week</span></div><div class="stat"><b>${wkLift}</b><span>lift sessions</span></div><div class="stat"><b>${lastNight?fmtHM(lastNight.sec):"–"}</b><span>latest sleep${lastNight?" · "+short(localDate(lastNight.cal)):""}</span></div>`;
+  const recent=ot.filter(x=>x.date>=new Date(+today-14*DAY)).reverse();
+  $("#otherList").innerHTML=recent.length?recent.map(a=>`<div class="item"><span>${short(a.date)} · ${esc(label(a.type))}${a.name&&a.name!==label(a.type)?` <span class="muted">${esc(a.name)}</span>`:""}</span><span>${fmtHM(a.sec)}${a.miles?` · ${a.miles.toFixed(1)} mi`:""}</span></div>`).join(""):`<p class="muted">Nothing besides runs and Fitbod lifts in the last two weeks.</p>`;
+  const wd=(today.getDay()+6)%7,ranToday=rs.some(x=>ymd(x.date)===ymd(today)),lifted=sess.some(x=>ymd(x.date)===ymd(today)),short6=lastNight&&lastNight.sec<6*3600&&lastNight.cal>=ymd(new Date(+today-DAY));
+  let t,why;
+  if(ranToday){t="Done for today";why="You already ran today."}
+  else if(planned.includes(wd)&&short6){t="Short easy run · ~2 mi";why=`You slept ${fmtHM(lastNight.sec)}, so today's planned run is cut down. Simple placeholder rule; real coaching comes in Phase 3.`}
+  else if(planned.includes(wd)){t="Easy run · ~3 mi";why="Today is a planned run day (Mon/Wed/Fri). Simple placeholder rule; real coaching comes in Phase 3."}
+  else if(!lifted&&wd<5){t="Lift or rest";why="Not a run day. A short strength session or a rest day both fit."}
+  else{t="Rest day";why="Weekends stay free in this plan."}
+  $("#nextTitle").textContent=t;$("#nextWhy").textContent=why;
+
+  // Running
+  bars($("#milesChart"),bucket(rs,x=>x.miles,8),"var(--run)",v=>v>=10?v.toFixed(0):v.toFixed(1));
+  paceLine($("#paceChart"),rs,goal);
+  $("#runTable").innerHTML=`<thead><tr><th>Date</th><th>Run</th><th class="num">Miles</th><th class="num">Time</th><th class="num">Pace</th><th class="num">Avg HR</th></tr></thead><tbody>`+
+    (rs.length?rs.slice(-10).reverse().map(r=>`<tr><td>${short(r.date)}</td><td>${esc(r.name)}</td><td class="num">${r.miles.toFixed(2)}</td><td class="num">${fmtPace(r.sec)}</td><td class="num">${fmtPace(r.sec/r.miles)}</td><td class="num">${r.hr?Math.round(r.hr):"–"}</td></tr>`).join(""):`<tr><td colspan="6" class="muted">No runs in your Garmin data yet.</td></tr>`)+"</tbody>";
+
+  // Strength
+  bars($("#volChart"),bucket(state.lifts.filter(x=>!x.warmup),x=>x.reps*x.weight,8),"var(--lift)",v=>v>=1000?(v/1000).toFixed(v>=10000?0:1)+"k":v.toFixed(0));
+  const best=new Map();for(const r of state.lifts){if(r.warmup||r.weight<=0||r.reps<=0||r.reps>12)continue;const e=r.weight*(1+r.reps/30),b=best.get(r.exercise);if(!b||e>b.e)best.set(r.exercise,{e,r})}
+  const pr=[...best.entries()].sort((a,b)=>b[1].e-a[1].e).slice(0,10);
+  $("#prTable").innerHTML=`<thead><tr><th>Exercise</th><th class="num">Est. 1RM</th><th class="num">From set</th><th>Date</th></tr></thead><tbody>`+
+    (pr.length?pr.map(([n,b])=>`<tr><td>${esc(n)}</td><td class="num">${Math.round(b.e)} lb</td><td class="num">${Math.round(b.r.weight)}×${b.r.reps}</td><td>${short(b.r.date)}</td></tr>`).join(""):`<tr><td colspan="4" class="muted">No weighted sets found.</td></tr>`)+"</tbody>";
+  $("#sessTable").innerHTML=`<thead><tr><th>Date</th><th class="num">Exercises</th><th class="num">Work sets</th><th class="num">Volume (lb)</th></tr></thead><tbody>`+
+    sess.slice(-10).reverse().map(s=>`<tr><td>${s.date.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})}</td><td class="num">${s.ex.size}</td><td class="num">${s.sets}</td><td class="num">${Math.round(s.vol).toLocaleString()}</td></tr>`).join("")+"</tbody>";
+
+  // Sleep
+  const n14=state.sleep.slice(-14),n7=state.sleep.slice(-7),avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:NaN;
+  const sc=n7.map(n=>n.score).filter(x=>typeof x==="number");
+  $("#sleepStats").innerHTML=`<div class="stat"><b>${fmtHM(avg(n7.map(n=>n.sec)))}</b><span>7-night average</span></div><div class="stat"><b>${sc.length?Math.round(avg(sc)):"–"}</b><span>avg sleep score</span></div><div class="stat"><b>${n7.filter(n=>n.sec<7*3600).length}/${n7.length}</b><span>nights under 7 h</span></div>`;
+  sleepBars($("#sleepChart"),n14);
+  $("#sleepTable").innerHTML=`<thead><tr><th>Night of</th><th class="num">Total</th><th class="num">Deep</th><th class="num">REM</th><th class="num">Awake</th><th class="num">Score</th></tr></thead><tbody>`+
+    (n14.length?n14.slice().reverse().map(n=>`<tr><td>${localDate(n.cal).toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})}</td><td class="num">${fmtHM(n.sec)}</td><td class="num">${n.deep!=null?fmtHM(n.deep):"–"}</td><td class="num">${n.rem!=null?fmtHM(n.rem):"–"}</td><td class="num">${n.awake!=null?fmtHM(n.awake):"–"}</td><td class="num">${n.score??"–"}</td></tr>`).join(""):`<tr><td colspan="6" class="muted">No nights yet.</td></tr>`)+"</tbody>";
+}
+
+/* ---------- account + auth panel ---------- */
+const when=d=>d.toLocaleString(undefined,{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+function renderAccount(){
+  const p=$("#authPanel"),title=$("#authTitle"),text=$("#authText");
+  $("#signInBtn").hidden=loadState!=="signed-out";$("#retryBtn").hidden=loadState!=="error";$("#signOutBtn").hidden=!user;
+  p.hidden=loadState==="ready"||loadState==="starting";
+  if(loadState==="unconfigured"){title.textContent="Finish setup";text.textContent="This copy of Splits isn't connected to a database yet. Put your Supabase project URL and publishable key in config.js (see the README)."}
+  else if(loadState==="signed-out"){title.textContent="Sign in";text.textContent="Sign in with Google to see your data. Until then you're looking at sample data."}
+  else if(loadState==="loading"){title.textContent="Loading";text.textContent="Loading your data…"}
+  else if(loadState==="error"){title.textContent="Couldn't load your data";text.textContent=loadErr+". Check your connection and try again."}
+  $("#acctChip").innerHTML=user?'<span class="chip real">Signed in</span>':'<span class="chip sample">Signed out</span>';
+  $("#acctText").textContent=user?"Signed in as "+(user.email||"your Google account")+". Your data is visible only to you.":"Sign in to upload and see your data.";
+  $("#tokenArea").hidden=!user;
+  const gc=$("#garminChip"),st=$("#syncText");
+  if(!user){gc.innerHTML=chip(state.gSrc);st.textContent="Sign in to see sync status."}
+  else if(!syncRow){gc.innerHTML='<span class="chip sample">Not run yet</span>';st.textContent="The daily sync hasn't run yet. Create a sync token above, add the two repo secrets from the README, then run the Garmin sync action once."}
+  else{const d=new Date(syncRow.last_run),stale=Date.now()-d>36*3600*1000;
+    gc.innerHTML=!syncRow.ok?'<span class="chip" style="background:var(--warn-soft);color:var(--warn)">Last sync failed</span>':stale?'<span class="chip" style="background:var(--warn-soft);color:var(--warn)">Sync is late</span>':'<span class="chip real">Synced</span>';
+    st.textContent="Last sync "+when(d)+": "+(syncRow.message||"")+(stale&&syncRow.ok?". It's been over a day; check the repo's Actions tab.":"")}
+}
+
+/* ---------- events ---------- */
+function show(view){document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.view===view)));
+  document.querySelectorAll("main section.view").forEach(s=>s.hidden=s.id!=="view-"+view);local.set("splits.tab",view)}
+document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>show(b.dataset.view)));
+function readFile(input,cb){const f=input.files&&input.files[0];if(!f)return;const fr=new FileReader();fr.onload=()=>cb(String(fr.result),f.name);fr.readAsText(f);input.value=""}
+const say=(el,msg,err)=>{el.className="toast"+(err?" err":"");el.textContent=msg};
+const storeErr=e=>"Couldn't save the import ("+(e&&e.message||"unknown error")+"). Try again in a moment.";
+function onFitbod(input){readFile(input,async(text,name)=>{const el=$("#fitbodToast");show("lift");
+  if(!user)return say(el,"Sign in first, then upload again.",true);
+  let p;try{p=parseFitbod(text)}catch(e){return say(el,e.message,true)}
+  say(el,"Saving "+p.rows.length+" sets…");try{await importFitbod(p.rows);say(el,`Imported ${p.rows.length} sets from ${name} (weights in ${p.unit}).`)}catch(e){say(el,storeErr(e),true)}})}
+$("#fitbodFile").addEventListener("change",e=>onFitbod(e.target));$("#fitbodFile2").addEventListener("change",e=>onFitbod(e.target));
+$("#garminFile").addEventListener("change",e=>readFile(e.target,async(text,name)=>{const el=$("#garminToast");
+  if(!user)return say(el,"Sign in first, then upload again.",true);
+  let p;try{p=parseGarmin(JSON.parse(text))}catch(err){return say(el,err instanceof SyntaxError?"That file isn't valid JSON. Upload the garmin.json the script wrote.":err.message,true)}
+  say(el,"Saving…");try{const r=await importGarmin(p);
+    say(el,`Imported ${r.acts} activities and ${r.sleep} nights of sleep from ${name}.`+(r.skipped?` Skipped ${r.skipped} without an ID.`:"")+(r.sleep?"":" No sleep nights matched the expected fields."),!r.sleep)}catch(err){say(el,storeErr(err),true)}}));
+$("#goalMile").addEventListener("input",()=>{local.set("splits.goal",$("#goalMile").value);render()});
+$("#resetBtn").addEventListener("click",()=>{const open=$("#resetConfirm").hidden;$("#resetConfirm").hidden=!open;$("#resetBtn").textContent=open?"Cancel":"Clear my data"});
+$("#resetConfirm").addEventListener("click",async()=>{if(!user)return;
+  try{await clearAll();$("#resetConfirm").hidden=true;$("#resetBtn").textContent="Data cleared"}catch(e){$("#resetBtn").textContent="Couldn't clear, try again"}});
+let tokenMade=false;
+$("#newToken").addEventListener("click",async()=>{
+  if(tokenMade||syncRow){if($("#newTokenConfirm").hidden){$("#newTokenConfirm").hidden=false;$("#tokenNote").className="toast err";$("#tokenNote").textContent="A new token stops the old one. Update the repo secret right after.";$("#newToken").textContent="Cancel";return}
+    $("#newTokenConfirm").hidden=true;$("#newToken").textContent="Create sync token";$("#tokenNote").textContent="";return}
+  makeToken()});
+$("#newTokenConfirm").addEventListener("click",()=>{$("#newTokenConfirm").hidden=true;$("#newToken").textContent="Create sync token";makeToken()});
+async function makeToken(){
+  const note=$("#tokenNote");note.className="toast";note.textContent="Creating…";
+  const{data,error}=await sb.rpc("splits_new_sync_token");
+  if(error){note.className="toast err";note.textContent="Couldn't create a token: "+error.message;return}
+  tokenMade=true;$("#userId").textContent=data;$("#idBox").hidden=false;$("#copyId").textContent="Copy";
+  note.className="toast";note.textContent="Copy it now. It's shown only once and isn't stored anywhere you can see it again.";
+}
+$("#copyId").addEventListener("click",()=>{const t=$("#userId").textContent;
+  const done=()=>{$("#copyId").textContent="Copied"};const fallback=()=>{const r=document.createRange();r.selectNodeContents($("#userId"));const sel=getSelection();sel.removeAllRanges();sel.addRange(r);$("#copyId").textContent="Selected, copy it"};
+  try{navigator.clipboard.writeText(t).then(done,fallback)}catch(e){fallback()}});
+$("#signInBtn").addEventListener("click",async()=>{$("#signInBtn").textContent="Opening Google…";
+  const{error}=await sb.auth.signInWithOAuth({provider:"google",options:{redirectTo:location.origin+location.pathname}});
+  if(error){$("#signInBtn").textContent="Sign in with Google";$("#authText").textContent="Google sign-in didn't start: "+error.message}});
+$("#signOutBtn").addEventListener("click",()=>sb.auth.signOut());
+$("#retryBtn").addEventListener("click",()=>loadData());
+
+/* ---------- boot ---------- */
+window.__splits={parseFitbod,parseGarmin,parseCSV};
+const g=local.get("splits.goal");if(g)$("#goalMile").value=g;
+const t0=local.get("splits.tab");if(t0&&document.getElementById("view-"+t0))show(t0);
+function setUser(s){
+  const next=s&&s.user||null;if((next&&next.id)===(user&&user.id)&&loadState!=="starting")return;
+  user=next;
+  if(user)loadData();else{real={acts:[],sleep:[],lifts:[]};syncRow=null;loadState="signed-out";applyData()}
+}
+applyData();
+if(!window.supabase||!cfg.url||!cfg.key){loadState="unconfigured";render()}
+else{
+  sb=window.supabase.createClient(cfg.url,cfg.key);
+  sb.auth.onAuthStateChange((_ev,session)=>setTimeout(()=>setUser(session),0));
+}
+})();
+</script>
+</body>
+</html>
