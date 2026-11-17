@@ -41,7 +41,9 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
 header.top .wrap{padding-block:12px 0;display:flex;flex-direction:column;gap:10px}
 .brand{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.brand h1{font:700 30px/1 var(--f-display);letter-spacing:.02em;margin:0;text-transform:uppercase}
+.brand h1{font:700 30px/1 var(--f-display);letter-spacing:.02em;margin:0;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.back{font:600 22px/1 var(--f-body);color:var(--muted);text-decoration:none;padding:2px 4px;border-radius:6px}
+.back:hover{color:var(--ink)}
 .brand h1 span{color:var(--run)}
 .brand small{font:500 12px var(--f-mono);color:var(--muted)}
 nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
@@ -128,7 +130,7 @@ details summary{cursor:pointer}
 
 <header class="top">
   <div class="wrap">
-    <div class="brand"><h1>Split<span>s</span></h1><span><small id="srcSummary">loading…</small> <button class="linkbtn" id="signOutBtn" type="button" hidden>Sign out</button></span></div>
+    <div class="brand"><h1><a class="back" id="backHome" href="/" aria-label="Back to Matt's Apps" hidden>←</a>Split<span>s</span></h1><span><small id="srcSummary">loading…</small> <button class="linkbtn" id="signOutBtn" type="button" hidden>Sign out</button></span></div>
     <nav class="tabs" role="tablist">
       <button role="tab" id="tab-today" aria-selected="true" data-view="today">Today</button>
       <button role="tab" id="tab-run" aria-selected="false" data-view="run">Running</button>
@@ -552,6 +554,8 @@ $("#signOutBtn").addEventListener("click",()=>sb.auth.signOut());
 $("#retryBtn").addEventListener("click",()=>loadData());
 
 /* ---------- boot ---------- */
+// Opened from the homepage? Show a back arrow (remembered across the Google sign-in round trip).
+try{if(new URLSearchParams(location.search).get("from")==="home")sessionStorage.setItem("splits.fromHome","1");$("#backHome").hidden=sessionStorage.getItem("splits.fromHome")!=="1"}catch(e){}
 window.__splits={parseFitbod,parseGarmin,parseCSV};
 const g=local.get("splits.goal");if(g)$("#goalMile").value=g;
 const t0=local.get("splits.tab");if(t0&&document.getElementById("view-"+t0))show(t0);
