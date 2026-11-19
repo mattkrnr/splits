@@ -357,10 +357,36 @@ let sb=null,user=null,syncRow=null,loadState="starting",loadErr="";
 const state={acts:[],sleep:[],lifts:[],gSrc:"sample",fSrc:"sample"};
 let real={acts:[],sleep:[],lifts:[]};
 function applyData(){
-  if(real.acts.length||real.sleep.length){state.acts=real.acts;state.sleep=real.sleep;state.gSrc="Garmin"}else{const s=sampleGarmin();state.acts=s.acts;state.sleep=s.sleep;state.gSrc="sample"}
+  if(real.acts.length||real.sleep.length){state.acts=real.acts.slice();state.sleep=real.sleep;state.gSrc="Garmin"}else{const s=sampleGarmin();state.acts=s.acts;state.sleep=s.sleep;state.gSrc="sample"}
   if(real.lifts.length){state.lifts=real.lifts;state.fSrc="Fitbod"}else{state.lifts=sampleLifts();state.fSrc="sample"}
+  if(state.fSrc!=="sample")mergeFitbodRuns(state.gSrc!=="sample");
   state.acts.sort((a,b)=>a.date-b.date);state.sleep.sort((a,b)=>a.cal<b.cal?-1:1);state.lifts.sort((a,b)=>a.date-b.date);
   render();
+}
+/* Fitbod copies runs from your watch (often twice). Runs never count as lift sets. A Fitbod run that matches
+   a Garmin run (start within 15 min, or within 3 h at about the same distance) is the same run and is dropped;
+   the rest (e.g. runs from before Garmin) are shown as runs, marked "Fitbod". */
+const FITBOD_RUN=/\b(running|jogging|run|jog)\b/i;
+function mergeFitbodRuns(addToRuns){
+  const isRunSet=x=>FITBOD_RUN.test(x.exercise)&&((x.dist||0)>0||(x.dur||0)>0);
+  const runs=state.lifts.filter(isRunSet);
+  if(!runs.length)return;
+  state.lifts=state.lifts.filter(x=>!isRunSet(x));
+  if(!addToRuns)return;
+  const near=(a,b,tol)=>Math.abs(a-b)<=Math.max(a,b,1)*tol;
+  const uniq=[];
+  for(const r of runs.slice().sort((a,b)=>a.date-b.date)){
+    if(uniq.some(u=>+u.date===+r.date&&near(u.dist||0,r.dist||0,.02)))continue;  // Fitbod's own duplicate import
+    uniq.push(r);
+  }
+  const garmin=state.acts.filter(a=>isRun(a.type));
+  const sameRun=r=>garmin.some(a=>{const dt=Math.abs(a.date-r.date)/1000;
+    return dt<=900||(dt<=3*3600&&a.miles>0&&r.dist>0&&near(a.miles*M_PER_MI,r.dist,.1))});
+  for(const r of uniq){
+    if(sameRun(r))continue;
+    state.acts.push({id:null,date:r.date,type:/treadmill/i.test(r.exercise)?"treadmill_running":"running",
+      name:r.exercise+" (Fitbod)",miles:r.dist>0?r.dist/M_PER_MI:null,sec:r.dur||0,hr:null,src:"fitbod"});
+  }
 }
 async function fetchAll(table,cols,order){
   const out=[];
