@@ -357,77 +357,14 @@ let sb=null,user=null,syncRow=null,loadState="starting",loadErr="";
 const state={acts:[],sleep:[],lifts:[],gSrc:"sample",fSrc:"sample"};
 let real={acts:[],sleep:[],lifts:[]};
 function applyData(){
-  if(real.acts.length||real.sleep.length){state.acts=real.acts.slice();state.sleep=real.sleep;state.gSrc="Garmin"}else{const s=sampleGarmin();state.acts=s.acts;state.sleep=s.sleep;state.gSrc="sample"}
+  if(real.acts.length||real.sleep.length){state.acts=real.acts;state.sleep=real.sleep;state.gSrc="Garmin"}else{const s=sampleGarmin();state.acts=s.acts;state.sleep=s.sleep;state.gSrc="sample"}
   if(real.lifts.length){state.lifts=real.lifts;state.fSrc="Fitbod"}else{state.lifts=sampleLifts();state.fSrc="sample"}
-  if(state.fSrc!=="sample")mergeFitbodRuns(state.gSrc!=="sample");
   state.acts.sort((a,b)=>a.date-b.date);state.sleep.sort((a,b)=>a.cal<b.cal?-1:1);state.lifts.sort((a,b)=>a.date-b.date);
   render();
 }
-/* Fitbod copies runs from your watch (often twice). Runs never count as lift sets. A Fitbod run that matches
-   a Garmin run (start within 15 min, or within 3 h at about the same distance) is the same run and is dropped;
-   the rest (e.g. runs from before Garmin) are shown as runs, marked "Fitbod". */
-const FITBOD_RUN=/\b(running|jogging|run|jog)\b/i;
-function mergeFitbodRuns(addToRuns){
-  const isRunSet=x=>FITBOD_RUN.test(x.exercise)&&((x.dist||0)>0||(x.dur||0)>0);
-  const runs=state.lifts.filter(isRunSet);
-  if(!runs.length)return;
-  state.lifts=state.lifts.filter(x=>!isRunSet(x));
-  if(!addToRuns)return;
-  const near=(a,b,tol)=>Math.abs(a-b)<=Math.max(a,b,1)*tol;
-  const uniq=[];
-  for(const r of runs.slice().sort((a,b)=>a.date-b.date)){
-    if(uniq.some(u=>+u.date===+r.date&&near(u.dist||0,r.dist||0,.02)))continue;  // Fitbod's own duplicate import
-    uniq.push(r);
-  }
-  const garmin=state.acts.filter(a=>isRun(a.type));
-  const sameRun=r=>garmin.some(a=>{const dt=Math.abs(a.date-r.date)/1000;
-    return dt<=900||(dt<=3*3600&&a.miles>0&&r.dist>0&&near(a.miles*M_PER_MI,r.dist,.1))});
-  for(const r of uniq){
-    if(sameRun(r))continue;
-    state.acts.push({id:null,date:r.date,type:/treadmill/i.test(r.exercise)?"treadmill_running":"running",
-      name:r.exercise+" (Fitbod)",miles:r.dist>0?r.dist/M_PER_MI:null,sec:r.dur||0,hr:null,src:"fitbod"});
-  }
-}
-async function fetchAll(table,cols,order){
-  const out=[];
-  for(let from=0;;from+=1000){const{data,error}=await sb.from(table).select(cols).order(order).range(from,from+999);if(error)throw error;out.push(...data);if(data.length<1000)break}
-  return out;
-}
-async function loadData(){
-  loadState="loading";render();
-  try{
-    const[a,s,l,st]=await Promise.all([
-      fetchAll("splits_activities","id,start_time,type,name,meters,seconds,avg_hr","start_time"),
-      fetchAll("splits_sleep_nights","cal,seconds,deep,light,rem,awake,score","cal"),
-      fetchAll("splits_lift_sets","id,performed_at,exercise,reps,weight_lb,warmup,multiplier,duration_s,distance_m","performed_at"),
-      sb.from("splits_sync_status").select("last_run,ok,message").maybeSingle()]);
-    real.acts=a.map(r=>({id:r.id,date:new Date(r.start_time),type:r.type,name:r.name||label(r.type),miles:r.meters?r.meters/M_PER_MI:null,sec:r.seconds||0,hr:r.avg_hr}));
-    real.sleep=s.map(r=>({cal:r.cal,sec:r.seconds,deep:r.deep,light:r.light,rem:r.rem,awake:r.awake,score:r.score}));
-    real.lifts=l.map(r=>({date:new Date(r.performed_at),exercise:r.exercise,reps:r.reps,weight:r.weight_lb,warmup:r.warmup,mult:r.multiplier,dur:r.duration_s,dist:r.distance_m}));
-    syncRow=st.data||null;loadState="ready";
-  }catch(e){loadState="error";loadErr=e&&e.message||String(e)}
-  applyData();
-}
-async function inChunks(rows,n,fn){for(let i=0;i<rows.length;i+=n){const{error}=await fn(rows.slice(i,i+n));if(error)throw error}}
-async function importGarmin(p){
-  const now=new Date().toISOString(),uid=user.id;
-  const arows=p.acts.filter(a=>a.id).map(a=>({user_id:uid,id:a.id,start_time:a.date.toISOString(),type:a.type,name:a.name,meters:a.miles==null?null:a.miles*M_PER_MI,seconds:a.sec,avg_hr:a.hr,raw:a.raw||null,updated_at:now}));
-  const srows=p.sleep.map(s=>({user_id:uid,cal:s.cal,seconds:Math.round(s.sec),deep:s.deep,light:s.light,rem:s.rem,awake:s.awake,score:s.score,updated_at:now}));
-  await inChunks(arows,200,c=>sb.from("splits_activities").upsert(c,{onConflict:"user_id,id"}));
-  await inChunks(srows,500,c=>sb.from("splits_sleep_nights").upsert(c,{onConflict:"user_id,cal"}));
-  await loadData();
-  return{acts:arows.length,skipped:p.acts.length-arows.length,sleep:srows.length};
-}
-async function importFitbod(rows){
-  const uid=user.id;
-  const del=await sb.from("splits_lift_sets").delete().eq("user_id",uid);if(del.error)throw del.error;
-  await inChunks(rows.map(r=>({user_id:uid,performed_at:r.date.toISOString(),exercise:r.exercise,reps:r.reps,weight_lb:r.weight,warmup:r.warmup,multiplier:r.mult,duration_s:r.dur,distance_m:r.dist})),500,c=>sb.from("splits_lift_sets").insert(c));
-  await loadData();
-}
-async function clearAll(){
-  for(const t of["splits_activities","splits_sleep_nights","splits_lift_sets"]){const{error}=await sb.from(t).delete().eq("user_id",user.id);if(error)throw error}
-  await loadData();
-}
+/* Runs Fitbod copied from the watch are de-duplicated in the database: the app reads the views
+   splits_activities_all (Garmin + Fitbod-only runs) and splits_strength_sets (Fitbod sets minus runs).
+   See supabase/migrations/*_splits_dedup_views.sql for the rule. */
 
 /* ---------- derived ---------- */
 const runs=()=>state.acts.filter(a=>isRun(a.type)&&a.miles>0&&a.sec>0);

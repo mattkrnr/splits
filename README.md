@@ -55,3 +55,14 @@ Open the site in Safari, then **Share → Add to Home Screen**.
   python3 garmin_pull.py --save-key    # once
   python3 garmin_pull.py --days 90
   ```
+
+## Data for analysis
+Read these views, not the raw tables. They de-duplicate across Garmin and Fitbod, so nobody needs to know the rule:
+
+| View | What it holds |
+| --- | --- |
+| `splits_activities_all` | Every Garmin activity, plus Fitbod runs that aren't on Garmin (`source` = `garmin` or `fitbod`) |
+| `splits_strength_sets` | Fitbod sets without runs. `weight_lb` is per dumbbell; `multiplier` 2 = a pair, 0 = timed set |
+| `splits_sleep_nights` | Garmin sleep per night (about the last year) |
+
+**Duplicate rule** (in `supabase/migrations/*_splits_dedup_views.sql`): Fitbod copies runs from the watch, often twice. A Fitbod run is the same run as a Garmin run if it starts within 15 minutes of it, or within 3 hours at a distance within 10%. Fitbod rows with the same start time and a distance within 2% count once. Exercise names are matched as whole words, so "Crunches" is not a run. The raw tables `splits_activities` and `splits_lift_sets` keep everything as imported.
