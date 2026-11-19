@@ -86,14 +86,27 @@ def save_key():
 
 
 def get_token(api_key):
-    data = http("POST", "/personalapitoken-service/personal-api/personal-api-key/token",
-                {"Authorization": f"ApiKey {api_key}"})
-    if isinstance(data, dict):
-        for k in ("access_token", "accessToken", "token"):
-            if data.get(k):
-                return data[k]
-    sys.exit("Token call worked but the token field wasn't found. Fields: "
-             + (", ".join(data.keys()) if isinstance(data, dict) else type(data).__name__))
+    # Matches Garmin's official client: Accept */*, and the token comes back as plain text (a JWT).
+    path = "/personalapitoken-service/personal-api/personal-api-key/token"
+    req = urllib.request.Request(HOST + path, method="POST",
+                                 headers={"Accept": "*/*", "Authorization": f"ApiKey {api_key}"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = resp.read().decode("utf-8").strip()
+    except urllib.error.HTTPError as e:
+        hint = " (the key may be wrong, deleted or expired)" if e.code in (401, 403) else ""
+        raise ApiError(f"POST {path} -> HTTP {e.code}{hint}: {e.read().decode('utf-8', 'replace')[:300]}")
+    except urllib.error.URLError as e:
+        raise ApiError(f"POST {path} -> {e.reason}")
+    if body.startswith("{"):  # tolerate a JSON wrapper, just in case
+        try:
+            data = json.loads(body)
+            body = next((data[k] for k in ("access_token", "accessToken", "token") if data.get(k)), "")
+        except ValueError:
+            body = ""
+    if not body:
+        sys.exit("Garmin's token response was empty or in an unexpected format.")
+    return body
 
 
 def pull_activities(auth, start, end, page=100):
