@@ -135,7 +135,7 @@ select{padding:7px 10px;border:1px solid var(--line);border-radius:8px;backgroun
 .pitems{display:flex;flex-direction:column;gap:6px;min-width:0}
 .pitem{display:flex;gap:8px;align-items:baseline}
 .pitem .k{flex:0 0 auto;width:8px;height:8px;border-radius:2px;transform:translateY(-1px)}
-.k.run{background:var(--run)}.k.lift{background:var(--lift)}.k.cross{background:var(--other)}.k.care{background:var(--sleep)}.k.rest,.k.done{background:var(--muted)}
+.k.walk{background:var(--other)}.k.run{background:var(--run)}.k.lift{background:var(--lift)}.k.cross{background:var(--other)}.k.care{background:var(--sleep)}.k.rest,.k.done{background:var(--muted)}
 .pitem b{font-weight:600}
 .pitem .why{display:block;color:var(--muted);font-size:13px}
 .pitem.optional b{font-weight:500}
@@ -144,13 +144,25 @@ select{padding:7px 10px;border:1px solid var(--line);border-radius:8px;backgroun
 .sbar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
 .sbar i{display:block;height:100%;background:var(--sleep)}
 .sbar i.hi{background:var(--warn)}
-.note{display:flex;flex-direction:column;gap:4px;padding:10px 0;border-bottom:1px solid var(--line)}
-.note:last-child{border-bottom:0}
-.note .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+.bnote{display:flex;flex-direction:column;gap:4px;padding:10px 0;border-bottom:1px solid var(--line)}
+.bnote:last-child{border-bottom:0}
+.bnote .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
 .routine ol{margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 .routine li span{color:var(--muted);font-size:13px;display:block}
 .fab{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:6;border:0;border-radius:999px;padding:12px 16px;background:var(--sleep);color:var(--surface);font:600 15px var(--f-body);box-shadow:0 4px 14px rgba(0,0,0,.18);cursor:pointer}
 main .wrap{padding-bottom:84px}
+.hblock{display:flex;flex-direction:column;gap:4px;padding:8px 0;border-bottom:1px solid var(--line)}
+.hblock:last-child{border-bottom:0}
+.hblock h4{margin:0;font:600 13px var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.hitem{display:flex;gap:10px;align-items:flex-start;padding:4px 0;cursor:pointer}
+.hitem input{margin-top:3px;width:18px;height:18px;accent-color:var(--lift);flex:0 0 auto}
+.hitem span.d{display:block;color:var(--muted);font-size:13px}
+.hitem.done b{text-decoration:line-through;color:var(--muted)}
+.rowlink{border:0;background:none;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.nmark{display:inline-block;margin-left:6px;font:600 11px var(--f-mono);color:var(--sleep);background:var(--sleep-soft);padding:1px 6px;border-radius:999px;text-decoration:none}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:8;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -6px 24px rgba(0,0,0,.18);max-height:75vh;overflow:auto;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px calc(16px + env(safe-area-inset-bottom,0px))}
+.sheet .in{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
 @media (max-width:420px){.stat b{font-size:24px}.day{min-height:90px}}
 @media (prefers-reduced-motion:no-preference){nav.tabs button{transition:color .15s,border-color .15s}}
 </style>
@@ -196,6 +208,11 @@ main .wrap{padding-bottom:84px}
     <div class="row between"><h3>Plan, next 7 days</h3><button class="linkbtn" type="button" data-goto="body">How I feel</button></div>
     <div class="plan" id="planList"></div>
     <p class="muted small">Suggestions follow simple rules based on your body notes. They aren't medical advice: for sharp pain, swelling, or pain lasting 2+ weeks, see a physical therapist.</p>
+  </div>
+  <div class="panel" id="homePanel">
+    <div class="row between"><h3>After-work session</h3><span class="muted small" id="homeMeta"></span></div>
+    <div id="homeList"></div>
+    <p class="muted small">At home with a chair, a step, a towel and a ball or frozen bottle. Stop anything that pushes pain above 4/10. Ticks reset each day.</p>
   </div>
   <div class="panel">
     <div class="row between"><h3>This week</h3><span class="muted" style="font-size:12px">Dashed = planned run day · ☾ = sleep</span></div>
@@ -250,6 +267,7 @@ main .wrap{padding-bottom:84px}
     <div><p class="muted small" style="margin-bottom:6px">Areas (dashed = suggested from your words; tap to confirm)</p><div class="chips" id="noteAreas"></div></div>
     <div class="sevrow"><label for="noteSev" class="muted small">Pain 0–10</label><input type="range" id="noteSev" min="0" max="10" step="1" value="0"><span class="sevval" id="noteSevVal">0</span></div>
     <div class="row"><label for="noteWhen" class="muted small">When</label><select id="noteWhen"></select></div>
+    <div id="noteWkWrap"><p class="muted small" style="margin-bottom:6px">Link to workouts (last 2 days; tap to add or remove)</p><div class="chips" id="noteWorkouts"></div></div>
     <div class="row"><button class="btn" id="noteSave" type="button">Save note</button><span class="toast" id="noteToast" role="status"></span></div>
   </div>
   <div class="panel"><div class="row between"><h3>How your body is doing</h3><span class="muted small">last 7 days</span></div><div class="status" id="bodyStatus"></div></div>
@@ -301,6 +319,12 @@ main .wrap{padding-bottom:84px}
 </section>
 </div></main>
 <button class="fab" id="fab" type="button" aria-label="Add a body note">+ How I feel</button>
+<div class="sheet" id="wkSheet" role="dialog" aria-labelledby="wkTitle" hidden><div class="in">
+  <div class="row between"><h3 id="wkTitle"></h3><button class="linkbtn" id="wkClose" type="button">Close</button></div>
+  <p class="muted small" id="wkMeta"></p>
+  <div id="wkNotes"></div>
+  <div class="row"><button class="btn" id="wkAdd" type="button">Add a note for this workout</button></div>
+</div></div>
 
 <script>
 (function(){
@@ -437,7 +461,7 @@ async function loadData(){
       fetchAll("splits_sleep_nights","cal,seconds,deep,light,rem,awake,score","cal"),
       fetchAll("splits_strength_sets","id,performed_at,exercise,reps,weight_lb,warmup,multiplier,duration_s,distance_m","performed_at"),
       sb.from("splits_sync_status").select("last_run,ok,message").maybeSingle(),
-      Promise.resolve().then(()=>sb.from("splits_body_notes").select("id,noted_at,note,areas,feeling,severity,context").order("noted_at",{ascending:false}).limit(300)).catch(()=>null)]);
+      Promise.resolve().then(()=>sb.from("splits_body_notes").select("id,noted_at,note,areas,feeling,severity,context,workouts").order("noted_at",{ascending:false}).limit(300)).catch(()=>null)]);
     real.acts=a.map(r=>({id:r.id,src:r.source,date:new Date(r.start_time),type:r.type,name:r.name||label(r.type),miles:r.meters?r.meters/M_PER_MI:null,sec:r.seconds||0,hr:r.avg_hr}));
     real.sleep=s.map(r=>({cal:r.cal,sec:r.seconds,deep:r.deep,light:r.light,rem:r.rem,awake:r.awake,score:r.score}));
     real.lifts=l.map(r=>({date:new Date(r.performed_at),exercise:r.exercise,reps:r.reps,weight:r.weight_lb,warmup:r.warmup,mult:r.multiplier,dur:r.duration_s,dist:r.distance_m}));
@@ -462,13 +486,13 @@ async function importFitbod(rows){
   await inChunks(rows.map(r=>({user_id:uid,performed_at:r.date.toISOString(),exercise:r.exercise,reps:r.reps,weight_lb:r.weight,warmup:r.warmup,multiplier:r.mult,duration_s:r.dur,distance_m:r.dist})),500,c=>sb.from("splits_lift_sets").insert(c));
   await loadData();
 }
-const noteFromRow=r=>({id:r.id,at:new Date(r.noted_at),note:r.note||"",areas:r.areas||[],feeling:r.feeling,severity:r.severity,context:r.context});
+const noteFromRow=r=>({id:r.id,at:new Date(r.noted_at),note:r.note||"",areas:r.areas||[],feeling:r.feeling,severity:r.severity,context:r.context,workouts:Array.isArray(r.workouts)?r.workouts:[]});
 async function loadNotes(){
-  const{data,error}=await sb.from("splits_body_notes").select("id,noted_at,note,areas,feeling,severity,context").order("noted_at",{ascending:false}).limit(300);
+  const{data,error}=await sb.from("splits_body_notes").select("id,noted_at,note,areas,feeling,severity,context,workouts").order("noted_at",{ascending:false}).limit(300);
   if(error)throw error;real.notes=data.map(noteFromRow);render();
 }
 async function saveNote(n){
-  const{error}=await sb.from("splits_body_notes").insert({user_id:user.id,note:n.note,areas:n.areas,feeling:sevFeeling(n.severity),severity:n.severity,context:n.context});
+  const{error}=await sb.from("splits_body_notes").insert({user_id:user.id,note:n.note,areas:n.areas,feeling:sevFeeling(n.severity),severity:n.severity,context:n.context,workouts:n.workouts||[]});
   if(error)throw error;await loadNotes();
 }
 async function deleteNote(id){const{error}=await sb.from("splits_body_notes").delete().eq("id",id);if(error)throw error;await loadNotes()}
@@ -544,8 +568,8 @@ function suggestFromText(text){
   const t=String(text||"");
   const areas=AREAS.filter(a=>a.re.test(t)).map(a=>a.key);
   let sev=null;
-  const explicit=t.match(/\b(10|[0-9])\s*(?:\/\s*10|out of 10)\b/i);
-  if(explicit)sev=+explicit[1];
+  const explicit=t.match(/\b(10(?:\.0+)?|[0-9](?:\.\d+)?)\s*(?:\/\s*10|out of 10)\b/i);
+  if(explicit)sev=Math.min(10,Math.round(parseFloat(explicit[1])));  // 8.5/10 -> 9 (slider is whole numbers)
   else if(/\bno (pain|soreness)\b|\bpain[- ]free\b/i.test(t)&&!/\bhurts?\b|\bsore\b/i.test(t))sev=0;
   else if(/\b(sharp|stabbing|flar(e|ed|ing)( up)?|acting up|limp(ing)?|can'?t (walk|run)|swollen|swelling)\b/i.test(t))sev=7;
   else if(/\b(hurts?|hurting|pain(ful)?|aching|throbbing)\b/i.test(t))sev=5;
@@ -598,19 +622,57 @@ const ROUTINES={
     ["Foam roll glutes and outer hip (TFL)","1–2 min each side; go easy on the IT band itself"]]}
 };
 
-// 7-day plan from today. Runs Mon/Wed/Fri, upper body Tue/Thu, weekends free; lower-body care every day.
+// After-work home session, 30 min max: no gym or equipment beyond a chair, a step, a towel and a ball/bottle.
+// Picks blocks from current discomforts (foot, hips) and adds lower-body strength, trimmed to fit.
+const HOME_MAX_MIN=30;
+function buildHomeSession(status){
+  const f=status.foot,h=status.hip,blocks=[];
+  const foot={key:"foot",title:"Foot & calf",items:[
+    {name:"Plantar fascia stretch (seated, pull toes back)",dose:"3 × 30 s each foot",min:3,core:true},
+    {name:"Wall calf stretch, knee straight",dose:"2 × 30 s each side",min:2,core:true},
+    {name:"Wall calf stretch, knee bent (soleus)",dose:"2 × 30 s each side",min:2},
+    {name:"Roll arch on a ball or frozen water bottle",dose:"1–2 min each foot",min:3,core:true},
+    {name:"Towel scrunches",dose:"3 × 15",min:2}]};
+  if(f<=3)foot.items.push({name:"Slow eccentric heel drops off a step",dose:"3 × 12, lower over 3 s",min:3,core:true});
+  else if(f<=6)foot.items.push({name:"Slow double-leg heel raises, holding a wall",dose:"3 × 10, only if pain stays at 4/10 or less",min:3});
+  const hips={key:"hip",title:"Hips (tight from sitting)",items:[
+    {name:"Kneeling hip flexor stretch",dose:"2 × 30 s each side",min:2,core:true},
+    {name:"Figure-4 glute stretch (lying or seated)",dose:"2 × 30 s each side",min:2,core:true},
+    {name:"90/90 hip switches",dose:"2 × 8 each side",min:2}]};
+  if(h>=1)hips.items.push({name:"Foam roll or ball on glutes and outer hip (TFL)",dose:"1–2 min each side; go easy on the IT band itself",min:3});
+  const legs={key:"legs",title:"Leg strength (no equipment)",items:[
+    {name:"Glute bridge (single-leg when easy)",dose:"3 × 12",min:3,core:true},
+    {name:"Side-lying hip abduction",dose:"3 × 15 each side",min:3,core:true},
+    {name:"Banded or plain clamshells",dose:"3 × 15 each side",min:2}]};
+  if(f<=6)legs.items.push({name:"Sit-to-stand from a chair, slow",dose:"3 × 10",min:3,core:true});
+  if(f<=4)legs.items.push({name:"Split squat, holding a wall if needed",dose:"2 × 8 each side",min:3});
+  if(f<=6)legs.items.push({name:"Wall sit",dose:"3 × 30 s",min:2});
+  // Order by what hurts most; legs always included since they feel weak.
+  const order=f>=4&&f>=h?[foot,hips,legs]:h>=4?[hips,legs,foot]:[legs,hips,foot];
+  for(const b of order)blocks.push({...b,items:b.items.slice()});
+  // Trim to fit: drop non-core items from the last block first, then core items from the last block.
+  const total=()=>blocks.reduce((a,b)=>a+b.items.reduce((x,i)=>x+i.min,0),0);
+  for(const pass of[false,true])for(let bi=blocks.length-1;bi>=0&&total()>HOME_MAX_MIN;bi--){
+    const b=blocks[bi];for(let ii=b.items.length-1;ii>=0&&total()>HOME_MAX_MIN;ii--)if(pass||!b.items[ii].core)b.items.splice(ii,1);
+  }
+  return{blocks:blocks.filter(b=>b.items.length),minutes:total(),focus:order[0].title};
+}
+
+// 7-day plan from today. Runs Mon/Wed/Fri, upper body Tue/Thu, weekends free; the after-work home session every weekday.
+// No gym, pool or easy bike access: when running is off, the swap is a walk or the home session.
 function buildPlan(status,{now=new Date(),ranToday=false,liftedToday=false,lastSleepSec=null,lastSleepCal=null}={}){
   const days=[],names=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
   const f=status.foot,h=status.hip,worst=Math.max(f,h);
   const flagged=[f>=1?`foot/calves ${f}/10`:null,h>=1?`IT band/hips ${h}/10`:null].filter(Boolean).join(", ");
-  const careKeys=f>=h?["foot","hip"]:["hip","foot"];
+  const home=buildHomeSession(status);
   const shortSleep=lastSleepSec!=null&&lastSleepSec<6*3600&&lastSleepCal>=ymd(new Date(+now-DAY));
   for(let i=0;i<7;i++){
     const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+i),wd=(d.getDay()+6)%7,items=[];
     if([0,2,4].includes(wd)){
       if(i===0&&ranToday)items.push({kind:"done",title:"Run done",why:"Already logged today."});
-      else if(worst>=6)items.push({kind:"cross",title:"No running: easy bike or swim, 20–30 min",why:`Flagged: ${flagged}. No impact until it settles below 4.`});
-      else if(worst>=4)items.push({kind:"run",title:"Short flat run, about 2 mi, or bike 20–30 min",why:`Flagged: ${flagged}. Run only if your first steps this morning feel 3/10 or less.`});
+      else if(f>=6)items.push({kind:"walk",title:"No running: home session instead, plus an easy walk if your foot allows",why:`Flagged: ${flagged}. Walk only if it stays at 3/10 or less; no running until it settles below 4.`});
+      else if(worst>=6)items.push({kind:"walk",title:"No running: easy walk, 30–45 min",why:`Flagged: ${flagged}. Walking keeps some cardio without the impact; no running until it settles below 4.`});
+      else if(worst>=4)items.push({kind:"run",title:"Short flat run, 1–2 mi, or a 30–40 min walk",why:`Flagged: ${flagged}. Run only if your first steps this morning feel 3/10 or less; otherwise walk.`});
       else if(worst>=1)items.push({kind:"run",title:"Easy run, about 3 mi, flat or soft surface",why:`Flagged: ${flagged}. Keep it easy and stop if it climbs.`});
       else if(wd===2)items.push({kind:"run",title:"Easy run, about 3 mi, plus 4 × 20 s strides",why:"Nothing flagged this week."});
       else items.push({kind:"run",title:"Easy run, about 3 mi",why:"Nothing flagged this week."});
@@ -621,13 +683,30 @@ function buildPlan(status,{now=new Date(),ranToday=false,liftedToday=false,lastS
       else items.push({kind:"lift",title:"Upper body in Fitbod (push + pull)",why:worst>=1?"Keeps upper-body strength. Skip leg work and jumps while your lower body is flagged.":"Keeps upper-body strength."});
     }
     if(wd>=5&&!items.length)items.push({kind:"rest",title:"Rest or an easy walk",why:"Weekends stay free."});
-    const careTimes=worst>=6?"twice, about 10 min each":"about 10 min";
-    items.push({kind:"care",title:`${ROUTINES[careKeys[0]].title} + ${ROUTINES[careKeys[1]].title}`,
-      why:(worst>=1?`Focus on ${ROUTINES[careKeys[0]].for}. `:"Protects your feet, calves and hips. ")+(wd>=5?"Optional on weekends, "+careTimes:careTimes[0].toUpperCase()+careTimes.slice(1))+".",routines:careKeys,optional:wd>=5});
+    items.push({kind:"care",title:`After-work home session, about ${home.minutes} min`,
+      why:`Starts with ${home.focus.toLowerCase()}.`+(f>=6?" Also do the plantar fascia and calf stretches first thing in the morning (5 min).":"")+(wd>=5?" Optional on weekends.":" The full list is on Today under After-work session."),optional:wd>=5});
     days.push({date:d,label:i===0?"Today":i===1?"Tomorrow":names[wd],items});
   }
   return{days,status};
 }
+
+/* ---------- workouts that notes can link to ----------
+   Keys stay stable across re-syncs and Fitbod re-uploads:
+   garmin:<activity id>, fitbod_run:<start ISO>, fitbod_lift:<local day YYYY-MM-DD>. */
+const actKey=a=>a.src==="fitbod"?"fitbod_run:"+a.date.toISOString():"garmin:"+a.id;
+function workoutList(){
+  const out=[];
+  if(state.gSrc!=="sample")for(const a of state.acts){const run=isRun(a.type);
+    out.push({key:actKey(a),at:a.date,kind:run?"run":"other",label:(run&&a.miles?a.miles.toFixed(1)+" mi ":"")+(run?"run":label(a.type))+(a.src==="fitbod"?" (Fitbod)":""),
+      detail:[a.name,a.miles?a.miles.toFixed(2)+" mi":"",a.sec?fmtHM(a.sec):"",run&&a.miles?fmtPace(a.sec/a.miles)+" /mi":""].filter(Boolean).join(" · ")})}
+  if(state.fSrc!=="sample")for(const s of sessions()){const ex=[...s.ex];
+    out.push({key:"fitbod_lift:"+ymd(s.date),at:s.date,kind:"lift",label:"Lift: "+ex.slice(0,2).join(", ")+(ex.length>2?` +${ex.length-2}`:""),
+      detail:`${ex.length} exercises · ${s.sets} work sets · ${Math.round(s.vol).toLocaleString()} lb volume`})}
+  return out;
+}
+const notesFor=key=>(real.notes||[]).filter(n=>(n.workouts||[]).some(w=>w.key===key));
+const nmark=key=>{const c=notesFor(key).length;return c?` <span class="nmark" title="${c} note${c>1?"s":""}">✎ ${c}</span>`:""};
+const wkWhen=d=>d.toLocaleString(undefined,{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
 
 /* ---------- render ---------- */
 const chip=src=>src==="sample"?'<span class="chip sample">Sample data</span>':'<span class="chip real">'+esc(src)+'</span>';
@@ -649,7 +728,7 @@ function render(){
   const wkMiles=rs.filter(x=>x.date>=w0).reduce((a,x)=>a+x.miles,0),wkLift=sess.filter(x=>x.date>=w0).length,lastNight=state.sleep[state.sleep.length-1];
   $("#todayStats").innerHTML=`<div class="stat"><b>${wkMiles.toFixed(1)}</b><span>miles this week</span></div><div class="stat"><b>${wkLift}</b><span>lift sessions</span></div><div class="stat"><b>${lastNight?fmtHM(lastNight.sec):"–"}</b><span>latest sleep${lastNight?" · "+short(localDate(lastNight.cal)):""}</span></div>`;
   const recent=ot.filter(x=>x.date>=new Date(+today-14*DAY)).reverse();
-  $("#otherList").innerHTML=recent.length?recent.map(a=>`<div class="item"><span>${short(a.date)} · ${esc(label(a.type))}${a.name&&a.name!==label(a.type)?` <span class="muted">${esc(a.name)}</span>`:""}</span><span>${fmtHM(a.sec)}${a.miles?` · ${a.miles.toFixed(1)} mi`:""}</span></div>`).join(""):`<p class="muted">Nothing besides runs and Fitbod lifts in the last two weeks.</p>`;
+  $("#otherList").innerHTML=recent.length?recent.map(a=>`<div class="item"><span>${short(a.date)} · ${state.gSrc==="sample"?esc(label(a.type)):`<button class="rowlink" type="button" data-wk="${esc(actKey(a))}">${esc(label(a.type))}</button>${nmark(actKey(a))}`}${a.name&&a.name!==label(a.type)?` <span class="muted">${esc(a.name)}</span>`:""}</span><span>${fmtHM(a.sec)}${a.miles?` · ${a.miles.toFixed(1)} mi`:""}</span></div>`).join(""):`<p class="muted">Nothing besides runs and Fitbod lifts in the last two weeks.</p>`;
   const notes=real.notes||[],status=bodyStatus(notes,today);
   const plan=buildPlan(status,{now:today,ranToday:rs.some(x=>ymd(x.date)===ymd(today)),liftedToday:sess.some(x=>ymd(x.date)===ymd(today)),
     lastSleepSec:lastNight?lastNight.sec:null,lastSleepCal:lastNight?lastNight.cal:null});
@@ -657,13 +736,14 @@ function render(){
   $("#nextTitle").textContent=main.title;$("#nextWhy").textContent=main.why;
   $("#planList").innerHTML=plan.days.map((d,i)=>`<div class="pday${i===0?" today":""}"><span class="dl">${d.label}</span><div class="pitems">`+
     d.items.map(it=>`<div class="pitem${it.optional?" optional":""}"><span class="k ${it.kind}"></span><div><b>${esc(it.title)}</b><span class="why">${esc(it.why)}</span></div></div>`).join("")+`</div></div>`).join("");
+  renderHome(buildHomeSession(status));
   renderBody(status,notes);
 
   // Running
   bars($("#milesChart"),bucket(rs,x=>x.miles,8),"var(--run)",v=>v>=10?v.toFixed(0):v.toFixed(1));
   paceLine($("#paceChart"),rs,goal);
   $("#runTable").innerHTML=`<thead><tr><th>Date</th><th>Run</th><th class="num">Miles</th><th class="num">Time</th><th class="num">Pace</th><th class="num">Avg HR</th></tr></thead><tbody>`+
-    (rs.length?rs.slice(-10).reverse().map(r=>`<tr><td>${short(r.date)}</td><td>${esc(r.name)}</td><td class="num">${r.miles.toFixed(2)}</td><td class="num">${fmtPace(r.sec)}</td><td class="num">${fmtPace(r.sec/r.miles)}</td><td class="num">${r.hr?Math.round(r.hr):"–"}</td></tr>`).join(""):`<tr><td colspan="6" class="muted">No runs in your Garmin data yet.</td></tr>`)+"</tbody>";
+    (rs.length?rs.slice(-10).reverse().map(r=>`<tr><td>${short(r.date)}</td><td>${state.gSrc==="sample"?esc(r.name):`<button class="rowlink" type="button" data-wk="${esc(actKey(r))}">${esc(r.name)}</button>${nmark(actKey(r))}`}</td><td class="num">${r.miles.toFixed(2)}</td><td class="num">${fmtPace(r.sec)}</td><td class="num">${fmtPace(r.sec/r.miles)}</td><td class="num">${r.hr?Math.round(r.hr):"–"}</td></tr>`).join(""):`<tr><td colspan="6" class="muted">No runs in your Garmin data yet.</td></tr>`)+"</tbody>";
 
   // Strength
   bars($("#volChart"),bucket(state.lifts.filter(x=>!x.warmup),setVolume,8),"var(--lift)",v=>v>=1000?(v/1000).toFixed(v>=10000?0:1)+"k":v.toFixed(0));
@@ -672,7 +752,7 @@ function render(){
   $("#prTable").innerHTML=`<thead><tr><th>Exercise</th><th class="num">Est. 1RM</th><th class="num">From set</th><th>Date</th></tr></thead><tbody>`+
     (pr.length?pr.map(([n,b])=>`<tr><td>${esc(n)}</td><td class="num">${Math.round(b.e)} lb</td><td class="num">${Math.round(b.r.weight)}×${b.r.reps}</td><td>${short(b.r.date)}</td></tr>`).join(""):`<tr><td colspan="4" class="muted">No weighted sets found.</td></tr>`)+"</tbody>";
   $("#sessTable").innerHTML=`<thead><tr><th>Date</th><th class="num">Exercises</th><th class="num">Work sets</th><th class="num">Volume (lb)</th></tr></thead><tbody>`+
-    sess.slice(-10).reverse().map(s=>`<tr><td>${s.date.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})}</td><td class="num">${s.ex.size}</td><td class="num">${s.sets}</td><td class="num">${Math.round(s.vol).toLocaleString()}</td></tr>`).join("")+"</tbody>";
+    sess.slice(-10).reverse().map(s=>{const k="fitbod_lift:"+ymd(s.date),dl=s.date.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});return `<tr><td>${state.fSrc==="sample"?dl:`<button class="rowlink" type="button" data-wk="${k}">${dl}</button>${nmark(k)}`}</td><td class="num">${s.ex.size}</td><td class="num">${s.sets}</td><td class="num">${Math.round(s.vol).toLocaleString()}</td></tr>`}).join("")+"</tbody>";
 
   // Sleep
   const n14=state.sleep.slice(-14),n7=state.sleep.slice(-7),avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:NaN;
@@ -705,7 +785,7 @@ function renderAccount(){
 }
 
 /* ---------- body tab ---------- */
-const noteUI={manualAreas:null,manualSev:false,manualWhen:false};
+const noteUI={manualAreas:null,manualSev:false,manualWhen:false,manualLinks:null,pinned:null};
 function renderNoteForm(){
   const sug=suggestFromText($("#noteText").value);
   const chosen=noteUI.manualAreas||new Set(sug.areas);
@@ -713,7 +793,50 @@ function renderNoteForm(){
   if(!noteUI.manualSev&&sug.sev!=null)$("#noteSev").value=sug.sev;
   const v=+$("#noteSev").value;$("#noteSevVal").textContent=v+" · "+sevWord(v);
   if(!noteUI.manualWhen)$("#noteWhen").value=sug.context;
+  renderNoteWorkouts();
 }
+// Workouts from the last 2 days, closest first; the closest is ticked unless you changed the ticks.
+function noteCandidates(){
+  const now=Date.now(),all=workoutList().filter(w=>Math.abs(now-w.at)<=2*DAY).sort((a,b)=>Math.abs(now-a.at)-Math.abs(now-b.at)).slice(0,6);
+  if(noteUI.pinned&&!all.some(w=>w.key===noteUI.pinned.key))all.unshift(noteUI.pinned);
+  return all;
+}
+function chosenLinks(c=noteCandidates()){return noteUI.manualLinks||new Set(c.length?[c[0].key]:[])}
+function renderNoteWorkouts(){
+  const c=noteCandidates(),chosen=chosenLinks(c);
+  $("#noteWkWrap").hidden=!user||!c.length;
+  $("#noteWorkouts").innerHTML=c.map(w=>`<button type="button" class="chipbtn" data-link="${esc(w.key)}" aria-pressed="${chosen.has(w.key)}">${esc(short(w.at))} · ${esc(w.label)}</button>`).join("");
+}
+function renderHome(h){
+  const day=ymd(new Date());let done={};try{done=JSON.parse(localStorage.getItem("splits.home."+day))||{}}catch(e){}
+  $("#homeMeta").textContent=`about ${h.minutes} min`;
+  $("#homeList").innerHTML=h.blocks.map((b,bi)=>`<div class="hblock"><h4>${esc(b.title)}</h4>`+b.items.map((it,ii)=>{const id=`home-${b.key}-${ii}`,on=!!done[it.name];
+    return `<label class="hitem${on?" done":""}" for="${id}"><input type="checkbox" id="${id}" data-home="${esc(it.name)}"${on?" checked":""}><span><b>${esc(it.name)}</b><span class="d">${esc(it.dose)} · ~${it.min} min</span></span></label>`}).join("")+`</div>`).join("");
+}
+$("#homeList").addEventListener("change",e=>{const c=e.target.closest("[data-home]");if(!c)return;
+  const key="splits.home."+ymd(new Date());let done={};try{done=JSON.parse(localStorage.getItem(key))||{}}catch(err){}
+  if(c.checked)done[c.dataset.home]=1;else delete done[c.dataset.home];
+  try{localStorage.setItem(key,JSON.stringify(done))}catch(err){}
+  c.closest(".hitem").classList.toggle("done",c.checked)});
+$("#noteWorkouts").addEventListener("click",e=>{const b=e.target.closest("[data-link]");if(!b)return;
+  const cur=new Set(chosenLinks());cur.has(b.dataset.link)?cur.delete(b.dataset.link):cur.add(b.dataset.link);noteUI.manualLinks=cur;renderNoteWorkouts()});
+let sheetKey=null;
+function openWorkout(key){
+  const w=workoutList().find(x=>x.key===key);if(!w)return;sheetKey=key;
+  $("#wkTitle").textContent=w.kind==="lift"?"Lift session":w.label.replace(/^./,c=>c.toUpperCase());
+  $("#wkMeta").textContent=wkWhen(w.at)+" · "+w.detail;
+  const ns=notesFor(key);
+  $("#wkNotes").innerHTML=ns.length?ns.map(n=>`<div class="bnote"><span>${esc(n.note||"(no text)")}</span><span class="meta">${esc(wkWhen(n.at))}${n.severity==null?"":" · "+n.severity+"/10"}${n.areas.map(k=>` <span class="chip" style="background:var(--sleep-soft);color:var(--sleep)">${esc(AREA[k]?AREA[k].label:k)}</span>`).join("")}</span></div>`).join(""):`<p class="muted">No notes linked to this workout yet.</p>`;
+  $("#wkAdd").hidden=!user;$("#wkSheet").hidden=false;$("#wkClose").focus();
+}
+function closeSheet(){$("#wkSheet").hidden=true;sheetKey=null}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-wk]");if(b)openWorkout(b.dataset.wk)});
+$("#wkClose").addEventListener("click",closeSheet);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#wkSheet").hidden)closeSheet()});
+$("#wkAdd").addEventListener("click",()=>{const w=workoutList().find(x=>x.key===sheetKey);if(!w)return;
+  noteUI.pinned=w;noteUI.manualLinks=new Set([w.key]);
+  if(!noteUI.manualWhen){$("#noteWhen").value=w.kind==="lift"?"after_lift":w.kind==="run"?"after_run":"other";noteUI.manualWhen=true}
+  closeSheet();show("body");renderNoteWorkouts();$("#noteText").focus();window.scrollTo({top:0})});
 function renderBody(status,notes){
   const rows=AREAS.filter(a=>status.areas[a.key]).map(a=>{const x=status.areas[a.key];
     return `<div class="srow"><span>${esc(a.label)} <span class="muted small">· ${x.raw}/10 ${short(x.at)}</span></span><span class="sbar"><i class="${x.level>=4?"hi":""}" style="width:${x.level*10}%"></i></span><span class="small">${x.level}/10 now</span></div>`});
@@ -721,8 +844,9 @@ function renderBody(status,notes){
   $("#routineList").innerHTML=Object.values(ROUTINES).map(r=>`<details class="routine"><summary><b>${esc(r.title)}</b> <span class="muted small">for ${esc(r.for)}</span></summary><ol>`+
     r.items.map(([n,d])=>`<li>${esc(n)}<span>${esc(d)}</span></li>`).join("")+`</ol></details>`).join("");
   const ctx=Object.fromEntries(CONTEXTS);
-  $("#noteList").innerHTML=!user?`<p class="muted">Sign in to save and see your notes.</p>`:notes.length?notes.slice(0,30).map(n=>`<div class="note"><span>${esc(n.note||"(no text)")}</span><span class="meta">${n.at.toLocaleString(undefined,{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})} · ${n.severity==null?"":n.severity+"/10 · "}${esc(ctx[n.context]||"")}${n.areas.map(k=>` <span class="chip" style="background:var(--sleep-soft);color:var(--sleep)">${esc(AREA[k]?AREA[k].label:k)}</span>`).join("")} <button class="linkbtn" type="button" data-del="${n.id}">Delete</button></span></div>`).join(""):`<p class="muted">No notes yet.</p>`;
+  $("#noteList").innerHTML=!user?`<p class="muted">Sign in to save and see your notes.</p>`:notes.length?notes.slice(0,30).map(n=>`<div class="bnote"><span>${esc(n.note||"(no text)")}</span><span class="meta">${n.at.toLocaleString(undefined,{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})} · ${n.severity==null?"":n.severity+"/10 · "}${esc(ctx[n.context]||"")}${n.areas.map(k=>` <span class="chip" style="background:var(--sleep-soft);color:var(--sleep)">${esc(AREA[k]?AREA[k].label:k)}</span>`).join("")}${(n.workouts||[]).map(w=>` <button class="rowlink small" type="button" data-wk="${esc(w.key)}">${esc(w.label)}</button>`).join("")} <button class="linkbtn" type="button" data-del="${n.id}">Delete</button></span></div>`).join(""):`<p class="muted">No notes yet.</p>`;
   $("#noteSave").disabled=!user;
+  renderNoteWorkouts();
 }
 $("#noteWhen").innerHTML=CONTEXTS.map(([k,l])=>`<option value="${k}">${l}</option>`).join("");
 $("#noteText").addEventListener("input",renderNoteForm);
@@ -736,9 +860,10 @@ $("#noteSave").addEventListener("click",async()=>{const el=$("#noteToast");
   const text=$("#noteText").value.trim(),areas=[...(noteUI.manualAreas||new Set(suggestFromText(text).areas))];
   if(!text&&!areas.length)return say(el,"Type how you feel or tap an area first.",true);
   say(el,"Saving…");
-  try{await saveNote({note:text,areas,severity:+$("#noteSev").value,context:$("#noteWhen").value});
-    $("#noteText").value="";$("#noteSev").value=0;Object.assign(noteUI,{manualAreas:null,manualSev:false,manualWhen:false});renderNoteForm();
-    say(el,"Saved. Your plan is updated.")}catch(e){say(el,"Couldn't save: "+(e.message||"unknown error")+". Try again.",true)}});
+  const c=noteCandidates(),links=[...chosenLinks(c)].map(k=>c.find(w=>w.key===k)).filter(Boolean).map(w=>({key:w.key,at:w.at.toISOString(),label:w.label}));
+  try{await saveNote({note:text,areas,severity:+$("#noteSev").value,context:$("#noteWhen").value,workouts:links});
+    $("#noteText").value="";$("#noteSev").value=0;Object.assign(noteUI,{manualAreas:null,manualSev:false,manualWhen:false,manualLinks:null,pinned:null});renderNoteForm();
+    say(el,"Saved"+(links.length?` and linked to ${links.length} workout${links.length>1?"s":""}`:"")+". Your plan is updated.")}catch(e){say(el,"Couldn't save: "+(e.message||"unknown error")+". Try again.",true)}});
 $("#noteList").addEventListener("click",async e=>{const b=e.target.closest("[data-del]");if(!b)return;
   if(b.dataset.confirm!=="1"){b.dataset.confirm="1";b.textContent="Tap again to delete";return}
   try{await deleteNote(+b.dataset.del)}catch(err){b.textContent="Couldn't delete"}});
