@@ -56,6 +56,17 @@ h2{font:700 22px/1.1 var(--f-display);letter-spacing:.04em;text-transform:upperc
 h3{font:600 13px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0}
 p{margin:0;max-width:65ch}
 .muted{color:var(--muted)}
+/* Next milestone + Race past you */
+.ms{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;align-items:baseline}
+.ms b.big{font:600 28px var(--f-display);color:var(--run)}
+.ladder{display:flex;gap:6px;flex-wrap:wrap;font-size:13px}
+.ladder span{border:1px solid var(--line);border-radius:999px;padding:2px 9px;font-family:var(--f-mono)}
+.ladder span.now{background:var(--run-soft);border-color:var(--run);color:var(--run)}
+.ladder span.boss{border-style:dashed}
+.gh-row{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.gh-row:last-child{border-bottom:0}
+.gh-row .d{font:600 18px var(--f-mono)}
+.gh-row .win{color:var(--lift)} .gh-row .lose{color:var(--warn)}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
 .between{justify-content:space-between}
@@ -230,6 +241,8 @@ main .wrap{padding-bottom:84px}
     <h3>Mile goal</h3>
     <div class="goal"><label for="goalMile">Target mile</label><input id="goalMile" type="text" value="4:38" placeholder="4:38" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-describedby="goalHint"><span class="muted" id="goalHint"></span></div>
   </div>
+  <div class="panel"><h3>Next milestone</h3><div id="milestones"><span class="muted">Loading…</span></div></div>
+  <div class="panel"><h3>Race past you</h3><p class="muted" style="margin:0;font-size:13px">Each recent run against a run from about 4 weeks earlier with the same start and a similar distance. The number is how far ahead or behind you'd finish if you'd raced that past you.</p><div id="ghosts"><span class="muted">Loading…</span></div></div>
   <div class="panel"><h3>Recent runs</h3><div class="tablebox"><table id="runTable"></table></div></div>
 </section>
 
@@ -469,6 +482,60 @@ async function loadData(){
     syncRow=st.data||null;loadState="ready";
   }catch(e){loadState="error";loadErr=e&&e.message||String(e)}
   applyData();
+  loadRunExtras();
+}
+
+/* ───────── Next milestone + Race past you ─────────
+   Uses Garmin's per-run summary: fastest mile/5K inside each run and the start coordinates. */
+let runX=[];
+async function loadRunExtras(){
+  const ms=document.getElementById("milestones"),gh=document.getElementById("ghosts");
+  if(!sb||!user){ms.innerHTML=gh.innerHTML='<span class="muted">Sign in to see this.</span>';return}
+  try{
+    runX=(await fetchAll("splits_activities","id,type,start_time,meters,seconds,mile:raw->fastestSplit_1609,k5:raw->fastestSplit_5000,lat:raw->startLatitude,lng:raw->startLongitude","start_time"))
+      .filter(r=>/run/i.test(r.type||"")&&r.meters>=800&&r.seconds>0).map(r=>({...r,date:new Date(r.start_time)}));
+  }catch(e){ms.innerHTML=gh.innerHTML=`<span class="muted">Couldn't load: ${e.message||e}</span>`;return}
+  renderMilestones();renderGhosts();
+}
+function bestSince(key,days){const t=Date.now()-days*DAY;let b=null;for(const r of runX)if(r.date>=t&&r[key]>0&&(!b||r[key]<b.v))b={v:+r[key],date:r.date};return b}
+function nextStep(v,step){return Math.floor((v-3)/step)*step}   // next round mark at least 3 s faster
+function renderMilestones(){
+  const goal=parseClock(document.getElementById("goalMile").value),rows=[];
+  for(const [key,name,step,boss] of [["mile","Mile",10,isFinite(goal)?goal:278],["k5","5K",30,null]]){
+    const recent=bestSince(key,90)||bestSince(key,365),allTime=bestSince(key,36500);
+    if(!recent){rows.push(`<span class="muted">${name}</span><span class="muted">No ${name.toLowerCase()} splits yet. Run at least a ${name==="Mile"?"mile":"5K"} with your watch.</span>`);continue}
+    const next=nextStep(recent.v,step),gap=Math.round(recent.v-next);
+    const ladder=[`<span class="now">now ${fmtPace(recent.v)}</span>`,`<span>next ${fmtPace(next)}</span>`];
+    if(allTime&&allTime.v<next)ladder.push(`<span>your best ${fmtPace(allTime.v)} (${allTime.date.getFullYear()})</span>`);
+    if(boss)ladder.push(`<span class="boss">final boss ${fmtPace(boss)}</span>`);
+    rows.push(`<span class="muted">${name}</span><div><b class="big">${fmtPace(next)}</b> <span class="muted">${gap}s faster than your best in the last ${bestSince(key,90)?"90 days":"year"} (${recent.date.toLocaleDateString(undefined,{month:"short",day:"numeric"})})</span><div class="ladder">${ladder.join("")}</div></div>`);
+  }
+  document.getElementById("milestones").innerHTML=`<div class="ms">${rows.join("")}</div><span class="muted" style="font-size:13px">Times are your fastest mile or 5K inside any run, from Garmin. Hit a target and the next one appears.</span>`;
+}
+function metersApart(a,b){if(a.lat==null||b.lat==null)return Infinity;const R=6371e3,toR=Math.PI/180,dLat=(b.lat-a.lat)*toR,dLng=(b.lng-a.lng)*toR;
+  const h=Math.sin(dLat/2)**2+Math.cos(a.lat*toR)*Math.cos(b.lat*toR)*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+function findGhost(r){
+  const ago=x=>(r.date-x.date)/DAY,close=x=>Math.abs(x.meters-r.meters)<=r.meters*.15;
+  const pool=runX.filter(x=>x!==r&&ago(x)>=14&&close(x));
+  const near=pool.filter(x=>metersApart(r,x)<=300);
+  // Prefer the same start, closest to 4 weeks back; then any similar-distance run
+  for(const [list,same] of [[near.filter(x=>ago(x)<=60),true],[near.filter(x=>ago(x)<=180),true],[pool.filter(x=>ago(x)<=60),false]]){
+    if(list.length)return{g:list.sort((a,b)=>Math.abs(ago(a)-28)-Math.abs(ago(b)-28))[0],same};
+  }
+  return null;
+}
+function renderGhosts(){
+  const recent=runX.slice(-6).reverse(),rows=[];
+  for(const r of recent){
+    const m=findGhost(r),day=d=>d.toLocaleDateString(undefined,{month:"short",day:"numeric"}),mi=(r.meters/M_PER_MI).toFixed(1);
+    if(!m){rows.push(`<div class="gh-row"><div><b>${day(r.date)}</b> · ${mi} mi<br><span class="muted">No similar run 2 weeks to 6 months earlier</span></div><span class="muted">–</span></div>`);continue}
+    // Race over your distance: past you holds their average pace
+    const pace=r.seconds/r.meters,gPace=m.g.seconds/m.g.meters,diff=Math.round((gPace-pace)*r.meters);
+    const win=diff>=0,mAhead=Math.round(Math.abs(diff)/(win?gPace:pace));
+    rows.push(`<div class="gh-row"><div><b>${day(r.date)}</b> · ${mi} mi · ${fmtPace(pace*M_PER_MI)}/mi<br><span class="muted">vs ${day(m.g.date)}${m.same?"":" (different route)"} · ${fmtPace(gPace*M_PER_MI)}/mi</span></div>
+      <div style="text-align:right"><span class="d ${win?"win":"lose"}">${win?"+":"−"}${fmtPace(Math.abs(diff))}</span><br><span class="muted">${win?"you'd win by":"past you wins by"} ~${mAhead} m</span></div></div>`);
+  }
+  document.getElementById("ghosts").innerHTML=rows.join("")||'<span class="muted">No runs yet.</span>';
 }
 async function inChunks(rows,n,fn){for(let i=0;i<rows.length;i+=n){const{error}=await fn(rows.slice(i,i+n));if(error)throw error}}
 async function importGarmin(p){
@@ -889,7 +956,7 @@ $("#garminFile").addEventListener("change",e=>readFile(e.target,async(text,name)
   let p;try{p=parseGarmin(JSON.parse(text))}catch(err){return say(el,err instanceof SyntaxError?"That file isn't valid JSON. Upload the garmin.json the script wrote.":err.message,true)}
   say(el,"Saving…");try{const r=await importGarmin(p);
     say(el,`Imported ${r.acts} activities and ${r.sleep} nights of sleep from ${name}.`+(r.skipped?` Skipped ${r.skipped} without an ID.`:"")+(r.sleep?"":" No sleep nights matched the expected fields."),!r.sleep)}catch(err){say(el,storeErr(err),true)}}));
-$("#goalMile").addEventListener("input",()=>{local.set("splits.goal",$("#goalMile").value);render()});
+$("#goalMile").addEventListener("input",()=>{local.set("splits.goal",$("#goalMile").value);render();if(runX.length)renderMilestones()});
 $("#resetBtn").addEventListener("click",()=>{const open=$("#resetConfirm").hidden;$("#resetConfirm").hidden=!open;$("#resetBtn").textContent=open?"Cancel":"Clear my data"});
 $("#resetConfirm").addEventListener("click",async()=>{if(!user)return;
   try{await clearAll();$("#resetConfirm").hidden=true;$("#resetBtn").textContent="Data cleared"}catch(e){$("#resetBtn").textContent="Couldn't clear, try again"}});
