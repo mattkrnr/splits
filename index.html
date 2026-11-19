@@ -366,6 +366,47 @@ function applyData(){
    splits_activities_all (Garmin + Fitbod-only runs) and splits_strength_sets (Fitbod sets minus runs).
    See supabase/migrations/*_splits_dedup_views.sql for the rule. */
 
+async function fetchAll(table,cols,order){
+  const out=[];
+  for(let from=0;;from+=1000){const{data,error}=await sb.from(table).select(cols).order(order).range(from,from+999);if(error)throw error;out.push(...data);if(data.length<1000)break}
+  return out;
+}
+async function loadData(){
+  loadState="loading";render();
+  try{
+    const[a,s,l,st]=await Promise.all([
+      fetchAll("splits_activities_all","source,id,start_time,type,name,meters,seconds,avg_hr","start_time"),
+      fetchAll("splits_sleep_nights","cal,seconds,deep,light,rem,awake,score","cal"),
+      fetchAll("splits_strength_sets","id,performed_at,exercise,reps,weight_lb,warmup,multiplier,duration_s,distance_m","performed_at"),
+      sb.from("splits_sync_status").select("last_run,ok,message").maybeSingle()]);
+    real.acts=a.map(r=>({id:r.id,src:r.source,date:new Date(r.start_time),type:r.type,name:r.name||label(r.type),miles:r.meters?r.meters/M_PER_MI:null,sec:r.seconds||0,hr:r.avg_hr}));
+    real.sleep=s.map(r=>({cal:r.cal,sec:r.seconds,deep:r.deep,light:r.light,rem:r.rem,awake:r.awake,score:r.score}));
+    real.lifts=l.map(r=>({date:new Date(r.performed_at),exercise:r.exercise,reps:r.reps,weight:r.weight_lb,warmup:r.warmup,mult:r.multiplier,dur:r.duration_s,dist:r.distance_m}));
+    syncRow=st.data||null;loadState="ready";
+  }catch(e){loadState="error";loadErr=e&&e.message||String(e)}
+  applyData();
+}
+async function inChunks(rows,n,fn){for(let i=0;i<rows.length;i+=n){const{error}=await fn(rows.slice(i,i+n));if(error)throw error}}
+async function importGarmin(p){
+  const now=new Date().toISOString(),uid=user.id;
+  const arows=p.acts.filter(a=>a.id).map(a=>({user_id:uid,id:a.id,start_time:a.date.toISOString(),type:a.type,name:a.name,meters:a.miles==null?null:a.miles*M_PER_MI,seconds:a.sec,avg_hr:a.hr,raw:a.raw||null,updated_at:now}));
+  const srows=p.sleep.map(s=>({user_id:uid,cal:s.cal,seconds:Math.round(s.sec),deep:s.deep,light:s.light,rem:s.rem,awake:s.awake,score:s.score,updated_at:now}));
+  await inChunks(arows,200,c=>sb.from("splits_activities").upsert(c,{onConflict:"user_id,id"}));
+  await inChunks(srows,500,c=>sb.from("splits_sleep_nights").upsert(c,{onConflict:"user_id,cal"}));
+  await loadData();
+  return{acts:arows.length,skipped:p.acts.length-arows.length,sleep:srows.length};
+}
+async function importFitbod(rows){
+  const uid=user.id;
+  const del=await sb.from("splits_lift_sets").delete().eq("user_id",uid);if(del.error)throw del.error;
+  await inChunks(rows.map(r=>({user_id:uid,performed_at:r.date.toISOString(),exercise:r.exercise,reps:r.reps,weight_lb:r.weight,warmup:r.warmup,multiplier:r.mult,duration_s:r.dur,distance_m:r.dist})),500,c=>sb.from("splits_lift_sets").insert(c));
+  await loadData();
+}
+async function clearAll(){
+  for(const t of["splits_activities","splits_sleep_nights","splits_lift_sets"]){const{error}=await sb.from(t).delete().eq("user_id",user.id);if(error)throw error}
+  await loadData();
+}
+
 /* ---------- derived ---------- */
 const runs=()=>state.acts.filter(a=>isRun(a.type)&&a.miles>0&&a.sec>0);
 const others=()=>state.acts.filter(a=>!isRun(a.type));
