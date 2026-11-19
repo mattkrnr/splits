@@ -170,7 +170,7 @@ details summary{cursor:pointer}
   <div class="panel"><h3>Avg pace per run (min/mi)</h3><svg class="chart" id="paceChart" viewBox="0 0 640 200" role="img" aria-label="Pace trend chart"></svg></div>
   <div class="panel">
     <h3>Mile goal</h3>
-    <div class="goal"><label for="goalMile">Target mile</label><input id="goalMile" value="4:38" inputmode="numeric" aria-describedby="goalHint"><span class="muted" id="goalHint"></span></div>
+    <div class="goal"><label for="goalMile">Target mile</label><input id="goalMile" type="text" value="4:38" placeholder="4:38" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-describedby="goalHint"><span class="muted" id="goalHint"></span></div>
   </div>
   <div class="panel"><h3>Recent runs</h3><div class="tablebox"><table id="runTable"></table></div></div>
 </section>
@@ -252,7 +252,8 @@ const $=s=>document.querySelector(s);
 const DAY=86400000, M_PER_MI=1609.344, KG2LB=2.20462;
 const fmtPace=s=>{if(!isFinite(s)||s<=0)return"–";s=Math.round(s);return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")};
 const fmtHM=s=>{if(!isFinite(s)||s<=0)return"–";const m=Math.round(s/60);return Math.floor(m/60)+":"+String(m%60).padStart(2,"0")};
-const parseClock=t=>{const m=String(t).trim().match(/^(\d+):(\d{1,2})$/);return m?(+m[1])*60+(+m[2]):NaN};
+// Mile time as m:ss. Also accepts 4.38, 4 38 or 438 so a phone number pad works.
+const parseClock=t=>{const v=String(t).trim();let m=v.match(/^(\d{1,2})\s*[:.\s]\s*(\d{1,2})$/)||v.match(/^(\d{1,2})(\d{2})$/);if(!m)return NaN;const sec=+m[2];return sec<60?(+m[1])*60+sec:NaN};
 const ymd=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const ym=d=>ymd(d).slice(0,7);
 const startOfWeek=d=>{const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());const wd=(x.getDay()+6)%7;return new Date(x-wd*DAY)};
@@ -460,7 +461,7 @@ function render(){
   const goal=parseClock($("#goalMile").value),rs=runs(),ot=others(),sess=sessions(),today=new Date(),w0=startOfWeek(today);
   $("#srcSummary").textContent=(state.gSrc==="sample"&&state.fSrc==="sample")?"showing sample data":"Garmin: "+(state.gSrc==="sample"?"sample":"yours")+" · Fitbod: "+(state.fSrc==="sample"?"sample":"yours");
   ["#runChip","#otherChip","#sleepChip"].forEach(s=>$(s).innerHTML=chip(state.gSrc));["#liftChip","#fitbodChip"].forEach(s=>$(s).innerHTML=chip(state.fSrc));
-  $("#goalHint").textContent=isFinite(goal)?"dashed line on the pace chart":"use m:ss, like 4:38";
+  $("#goalHint").textContent=isFinite(goal)?"dashed line on the pace chart":"type it like 4:38 or 438";
   renderAccount();
 
   // Today
