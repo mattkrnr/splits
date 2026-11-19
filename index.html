@@ -116,6 +116,41 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 .idbox{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .idbox code{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 8px;word-break:break-all;min-width:0}
 details summary{cursor:pointer}
+.small{font-size:12px}
+textarea{width:100%;min-height:84px;resize:vertical;font:15px/1.45 var(--f-body);padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+select,.sevrow input{font:14px var(--f-body);color:var(--ink)}
+select{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chipbtn{border:1px solid var(--line);background:var(--surface);color:var(--ink);font:500 13px var(--f-body);padding:6px 11px;border-radius:999px;cursor:pointer}
+.chipbtn[aria-pressed="true"]{background:var(--sleep-soft);border-color:var(--sleep);color:var(--sleep)}
+.chipbtn.suggested[aria-pressed="false"]{border-style:dashed;border-color:var(--sleep)}
+.sevrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.sevrow input[type=range]{flex:1 1 180px;accent-color:var(--sleep)}
+.sevval{font:600 22px/1 var(--f-display);font-variant-numeric:tabular-nums;min-width:4.5em}
+.plan{display:flex;flex-direction:column}
+.pday{display:grid;grid-template-columns:6.4em 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.pday:last-child{border-bottom:0}
+.pday .dl{font:600 15px var(--f-display);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.pday.today .dl{color:var(--run)}
+.pitems{display:flex;flex-direction:column;gap:6px;min-width:0}
+.pitem{display:flex;gap:8px;align-items:baseline}
+.pitem .k{flex:0 0 auto;width:8px;height:8px;border-radius:2px;transform:translateY(-1px)}
+.k.run{background:var(--run)}.k.lift{background:var(--lift)}.k.cross{background:var(--other)}.k.care{background:var(--sleep)}.k.rest,.k.done{background:var(--muted)}
+.pitem b{font-weight:600}
+.pitem .why{display:block;color:var(--muted);font-size:13px}
+.pitem.optional b{font-weight:500}
+.status{display:flex;flex-direction:column;gap:8px}
+.srow{display:grid;grid-template-columns:minmax(0,1fr) 7em 3em;gap:10px;align-items:center}
+.sbar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.sbar i{display:block;height:100%;background:var(--sleep)}
+.sbar i.hi{background:var(--warn)}
+.note{display:flex;flex-direction:column;gap:4px;padding:10px 0;border-bottom:1px solid var(--line)}
+.note:last-child{border-bottom:0}
+.note .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+.routine ol{margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.routine li span{color:var(--muted);font-size:13px;display:block}
+.fab{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:6;border:0;border-radius:999px;padding:12px 16px;background:var(--sleep);color:var(--surface);font:600 15px var(--f-body);box-shadow:0 4px 14px rgba(0,0,0,.18);cursor:pointer}
+main .wrap{padding-bottom:84px}
 @media (max-width:420px){.stat b{font-size:24px}.day{min-height:90px}}
 @media (prefers-reduced-motion:no-preference){nav.tabs button{transition:color .15s,border-color .15s}}
 </style>
@@ -130,12 +165,13 @@ details summary{cursor:pointer}
 
 <header class="top">
   <div class="wrap">
-    <div class="brand"><h1><a class="back" id="backHome" href="/" aria-label="Back to Matt's Apps" hidden>←</a>Split<span>s</span></h1><span><small id="srcSummary">loading…</small> <button class="linkbtn" id="signOutBtn" type="button" hidden>Sign out</button></span></div>
+    <div class="brand"><h1><a class="back" id="backHome" href="/" aria-label="Back to Matt's Apps" hidden>←</a><span>Split<span>s</span></span></h1><span><small id="srcSummary">loading…</small> <button class="linkbtn" id="signOutBtn" type="button" hidden>Sign out</button></span></div>
     <nav class="tabs" role="tablist">
       <button role="tab" id="tab-today" aria-selected="true" data-view="today">Today</button>
       <button role="tab" id="tab-run" aria-selected="false" data-view="run">Running</button>
       <button role="tab" id="tab-lift" aria-selected="false" data-view="lift">Strength</button>
       <button role="tab" id="tab-sleep" aria-selected="false" data-view="sleep">Sleep</button>
+      <button role="tab" id="tab-body" aria-selected="false" data-view="body">Body</button>
       <button role="tab" id="tab-connect" aria-selected="false" data-view="connect">Connect</button>
       <button role="tab" id="tab-plan" aria-selected="false" data-view="plan">Roadmap</button>
     </nav>
@@ -155,6 +191,11 @@ details summary{cursor:pointer}
     <h3>Next up</h3>
     <div class="big" id="nextTitle"></div>
     <p class="muted" id="nextWhy"></p>
+  </div>
+  <div class="panel">
+    <div class="row between"><h3>Plan, next 7 days</h3><button class="linkbtn" type="button" data-goto="body">How I feel</button></div>
+    <div class="plan" id="planList"></div>
+    <p class="muted small">Suggestions follow simple rules based on your body notes. They aren't medical advice: for sharp pain, swelling, or pain lasting 2+ weeks, see a physical therapist.</p>
   </div>
   <div class="panel">
     <div class="row between"><h3>This week</h3><span class="muted" style="font-size:12px">Dashed = planned run day · ☾ = sleep</span></div>
@@ -201,6 +242,21 @@ details summary{cursor:pointer}
   <div class="panel"><h3>Nights</h3><div class="tablebox"><table id="sleepTable"></table></div></div>
 </section>
 
+<section class="view" id="view-body" hidden>
+  <h2>Body</h2>
+  <div class="panel">
+    <h3><label for="noteText">How do you feel?</label></h3>
+    <textarea id="noteText" placeholder="e.g. Left heel sore on first steps this morning, IT band fine"></textarea>
+    <div><p class="muted small" style="margin-bottom:6px">Areas (dashed = suggested from your words; tap to confirm)</p><div class="chips" id="noteAreas"></div></div>
+    <div class="sevrow"><label for="noteSev" class="muted small">Pain 0–10</label><input type="range" id="noteSev" min="0" max="10" step="1" value="0"><span class="sevval" id="noteSevVal">0</span></div>
+    <div class="row"><label for="noteWhen" class="muted small">When</label><select id="noteWhen"></select></div>
+    <div class="row"><button class="btn" id="noteSave" type="button">Save note</button><span class="toast" id="noteToast" role="status"></span></div>
+  </div>
+  <div class="panel"><div class="row between"><h3>How your body is doing</h3><span class="muted small">last 7 days</span></div><div class="status" id="bodyStatus"></div></div>
+  <div class="panel"><h3>Routines</h3><div id="routineList"></div></div>
+  <div class="panel"><h3>Recent notes</h3><div id="noteList"></div></div>
+</section>
+
 <section class="view" id="view-connect" hidden>
   <h2>Connect your data</h2>
   <div class="panel">
@@ -244,6 +300,7 @@ details summary{cursor:pointer}
   <div class="panel phase"><span class="tag">PHASE 3</span><div><b>Your coach</b><ul><li>Bring in the AI Fitness Coach logic, for you only</li><li>Read sleep as capacity and shrink sessions when it's low</li><li>Plan run and lift days toward the mile goal</li></ul></div></div>
 </section>
 </div></main>
+<button class="fab" id="fab" type="button" aria-label="Add a body note">+ How I feel</button>
 
 <script>
 (function(){
@@ -375,14 +432,16 @@ async function fetchAll(table,cols,order){
 async function loadData(){
   loadState="loading";render();
   try{
-    const[a,s,l,st]=await Promise.all([
+    const[a,s,l,st,bn]=await Promise.all([
       fetchAll("splits_activities_all","source,id,start_time,type,name,meters,seconds,avg_hr","start_time"),
       fetchAll("splits_sleep_nights","cal,seconds,deep,light,rem,awake,score","cal"),
       fetchAll("splits_strength_sets","id,performed_at,exercise,reps,weight_lb,warmup,multiplier,duration_s,distance_m","performed_at"),
-      sb.from("splits_sync_status").select("last_run,ok,message").maybeSingle()]);
+      sb.from("splits_sync_status").select("last_run,ok,message").maybeSingle(),
+      Promise.resolve().then(()=>sb.from("splits_body_notes").select("id,noted_at,note,areas,feeling,severity,context").order("noted_at",{ascending:false}).limit(300)).catch(()=>null)]);
     real.acts=a.map(r=>({id:r.id,src:r.source,date:new Date(r.start_time),type:r.type,name:r.name||label(r.type),miles:r.meters?r.meters/M_PER_MI:null,sec:r.seconds||0,hr:r.avg_hr}));
     real.sleep=s.map(r=>({cal:r.cal,sec:r.seconds,deep:r.deep,light:r.light,rem:r.rem,awake:r.awake,score:r.score}));
     real.lifts=l.map(r=>({date:new Date(r.performed_at),exercise:r.exercise,reps:r.reps,weight:r.weight_lb,warmup:r.warmup,mult:r.multiplier,dur:r.duration_s,dist:r.distance_m}));
+    real.notes=bn&&!bn.error&&bn.data?bn.data.map(noteFromRow):[];  // notes never block the rest of the app
     syncRow=st.data||null;loadState="ready";
   }catch(e){loadState="error";loadErr=e&&e.message||String(e)}
   applyData();
@@ -403,6 +462,16 @@ async function importFitbod(rows){
   await inChunks(rows.map(r=>({user_id:uid,performed_at:r.date.toISOString(),exercise:r.exercise,reps:r.reps,weight_lb:r.weight,warmup:r.warmup,multiplier:r.mult,duration_s:r.dur,distance_m:r.dist})),500,c=>sb.from("splits_lift_sets").insert(c));
   await loadData();
 }
+const noteFromRow=r=>({id:r.id,at:new Date(r.noted_at),note:r.note||"",areas:r.areas||[],feeling:r.feeling,severity:r.severity,context:r.context});
+async function loadNotes(){
+  const{data,error}=await sb.from("splits_body_notes").select("id,noted_at,note,areas,feeling,severity,context").order("noted_at",{ascending:false}).limit(300);
+  if(error)throw error;real.notes=data.map(noteFromRow);render();
+}
+async function saveNote(n){
+  const{error}=await sb.from("splits_body_notes").insert({user_id:user.id,note:n.note,areas:n.areas,feeling:sevFeeling(n.severity),severity:n.severity,context:n.context});
+  if(error)throw error;await loadNotes();
+}
+async function deleteNote(id){const{error}=await sb.from("splits_body_notes").delete().eq("id",id);if(error)throw error;await loadNotes()}
 async function clearAll(){
   for(const t of["splits_activities","splits_sleep_nights","splits_lift_sets"]){const{error}=await sb.from(t).delete().eq("user_id",user.id);if(error)throw error}
   await loadData();
@@ -455,6 +524,111 @@ function sleepBars(svg,nights){
   $("#sleepLegend").innerHTML=staged?parts.map(([k,c,o])=>`<span><i style="background:${c};opacity:${o}"></i>${k==="rem"?"REM":k[0].toUpperCase()+k.slice(1)}</span>`).join(""):"";
 }
 
+/* ---------- coach: body notes, status, weekly plan ---------- */
+const AREAS=[
+  {key:"plantar_fascia",label:"Plantar fascia / foot",group:"foot",re:/plantar|\bpf\b|\barch(es)?\b|\bheels?\b|\bfoot\b|\bfeet\b/i},
+  {key:"calves",label:"Calves / Achilles",group:"foot",re:/\bcalf\b|\bcalves\b|achilles/i},
+  {key:"it_band",label:"IT band",group:"hip",re:/\bit[ -]?band|\bitb\b|i\.t\.\s*band/i},
+  {key:"hips",label:"Hips / glutes",group:"hip",re:/\bhips?\b|\bglutes?\b|piriformis/i},
+  {key:"knees",label:"Knees",group:"hip",re:/\bknees?\b/i},
+  {key:"shins",label:"Shins",group:"foot",re:/\bshins?\b|shin splints?/i},
+  {key:"back",label:"Back",group:"other",re:/\b(lower |upper )?back\b/i},
+  {key:"shoulders",label:"Shoulders",group:"other",re:/\bshoulders?\b/i}];
+const AREA=Object.fromEntries(AREAS.map(a=>[a.key,a]));
+const CONTEXTS=[["none","Not during exercise"],["during_run","During a run"],["after_run","After a run"],["during_lift","During lifting"],["after_lift","After lifting"],["other","Other activity"]];
+const sevWord=s=>s==null?"":s===0?"feels good":s<=2?"a little tight":s<=4?"sore":s<=6?"hurts":"bad";
+const sevFeeling=s=>s===0?"good":s<=1?"ok":s<=2?"tight":s<=4?"sore":"pain";
+
+// Read free text and suggest areas, a 0-10 score and when it happened. The person confirms with taps.
+function suggestFromText(text){
+  const t=String(text||"");
+  const areas=AREAS.filter(a=>a.re.test(t)).map(a=>a.key);
+  let sev=null;
+  const explicit=t.match(/\b(10|[0-9])\s*(?:\/\s*10|out of 10)\b/i);
+  if(explicit)sev=+explicit[1];
+  else if(/\bno (pain|soreness)\b|\bpain[- ]free\b/i.test(t)&&!/\bhurts?\b|\bsore\b/i.test(t))sev=0;
+  else if(/\b(sharp|stabbing|flar(e|ed|ing)( up)?|acting up|limp(ing)?|can'?t (walk|run)|swollen|swelling)\b/i.test(t))sev=7;
+  else if(/\b(hurts?|hurting|pain(ful)?|aching|throbbing)\b/i.test(t))sev=5;
+  else if(/\b(bad|worse|rough|shin splints?)\b/i.test(t))sev=5;
+  else if(/\b(sore|achy|aches?|stiff)\b/i.test(t))sev=3;
+  else if(/\b(tight|tender)\b/i.test(t))sev=2;
+  else if(/\b(good|great|fresh|strong|fine|awesome|amazing|recovered)\b/i.test(t))sev=0;
+  if(sev!=null&&!explicit&&sev>0){
+    if(/\b(really|very|super|killing)\b/i.test(t))sev=Math.min(10,sev+1);
+    if(/\b(slight(ly)?|a (little|bit)|mild(ly)?|minor)\b/i.test(t))sev=Math.max(1,sev-1);
+  }
+  let context="none";
+  if(/\b(during|mid)[- ]?(my |the )?(run|running)\b|\bwhile running\b/i.test(t))context="during_run";
+  else if(/\b(after|post)[- ]?(my |the )?(run|running)\b/i.test(t))context="after_run";
+  else if(/\b(during|mid)[- ]?(my |the )?(lift|lifting|workout|gym|squats?|deadlifts?)\b|\bwhile lifting\b/i.test(t))context="during_lift";
+  else if(/\b(after|post)[- ]?(my |the )?(lift|lifting|workout|gym)\b/i.test(t))context="after_lift";
+  return{areas,sev,context};
+}
+
+// Current level per area: the most recent note that names it within 7 days, easing by 1 point every 2 days.
+// A plain "feeling good" note (no areas, score 0) newer than an area's note eases that area by another point.
+function bodyStatus(notes,now=new Date()){
+  const recent=notes.filter(n=>now-n.at<=7*DAY&&n.at<=now).sort((a,b)=>b.at-a.at);
+  const lastGood=recent.find(n=>n.severity===0&&!n.areas.length);
+  const out={};
+  for(const a of AREAS){
+    const n=recent.find(x=>x.areas.includes(a.key)&&x.severity!=null);
+    if(!n)continue;
+    let level=n.severity-Math.floor((now-n.at)/(2*DAY));
+    if(lastGood&&lastGood.at>n.at)level-=1;
+    out[a.key]={level:Math.max(0,level),raw:n.severity,at:n.at,note:n.note};
+  }
+  const grp=g=>Math.max(0,...AREAS.filter(a=>a.group===g&&out[a.key]).map(a=>out[a.key].level));
+  return{areas:out,foot:grp("foot"),hip:grp("hip"),other:grp("other")};
+}
+
+const ROUTINES={
+  foot:{title:"Foot & calf care",for:"plantar fascia, calves, Achilles",items:[
+    ["Plantar fascia stretch (seated, pull toes back)","3 × 30 s each foot"],
+    ["Wall calf stretch, knee straight","3 × 30 s each side"],
+    ["Wall calf stretch, knee bent (soleus)","3 × 30 s each side"],
+    ["Roll arch on a ball or frozen water bottle","1–2 min each foot"],
+    ["Towel scrunches","3 × 15"],
+    ["Slow eccentric heel drops off a step","3 × 12, only if pain is 3/10 or less"]]},
+  hip:{title:"Hip & IT band care",for:"IT band, hips, knees",items:[
+    ["Side-lying hip abduction","3 × 15 each side"],
+    ["Banded clamshells","3 × 15 each side"],
+    ["Glute bridge (single-leg when easy)","3 × 12"],
+    ["Standing hip flexor stretch","2 × 30 s each side"],
+    ["Foam roll glutes and outer hip (TFL)","1–2 min each side; go easy on the IT band itself"]]}
+};
+
+// 7-day plan from today. Runs Mon/Wed/Fri, upper body Tue/Thu, weekends free; lower-body care every day.
+function buildPlan(status,{now=new Date(),ranToday=false,liftedToday=false,lastSleepSec=null,lastSleepCal=null}={}){
+  const days=[],names=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const f=status.foot,h=status.hip,worst=Math.max(f,h);
+  const flagged=[f>=1?`foot/calves ${f}/10`:null,h>=1?`IT band/hips ${h}/10`:null].filter(Boolean).join(", ");
+  const careKeys=f>=h?["foot","hip"]:["hip","foot"];
+  const shortSleep=lastSleepSec!=null&&lastSleepSec<6*3600&&lastSleepCal>=ymd(new Date(+now-DAY));
+  for(let i=0;i<7;i++){
+    const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+i),wd=(d.getDay()+6)%7,items=[];
+    if([0,2,4].includes(wd)){
+      if(i===0&&ranToday)items.push({kind:"done",title:"Run done",why:"Already logged today."});
+      else if(worst>=6)items.push({kind:"cross",title:"No running: easy bike or swim, 20–30 min",why:`Flagged: ${flagged}. No impact until it settles below 4.`});
+      else if(worst>=4)items.push({kind:"run",title:"Short flat run, about 2 mi, or bike 20–30 min",why:`Flagged: ${flagged}. Run only if your first steps this morning feel 3/10 or less.`});
+      else if(worst>=1)items.push({kind:"run",title:"Easy run, about 3 mi, flat or soft surface",why:`Flagged: ${flagged}. Keep it easy and stop if it climbs.`});
+      else if(wd===2)items.push({kind:"run",title:"Easy run, about 3 mi, plus 4 × 20 s strides",why:"Nothing flagged this week."});
+      else items.push({kind:"run",title:"Easy run, about 3 mi",why:"Nothing flagged this week."});
+      if(i===0&&shortSleep&&!ranToday&&worst<6){const it=items[items.length-1];it.title=it.title.replace(/about 3 mi/,"about 2 mi");it.why+=` Short sleep last night (${fmtHM(lastSleepSec)}), so it's cut down.`}
+    }
+    if(wd===1||wd===3){
+      if(i===0&&liftedToday)items.push({kind:"done",title:"Lift done",why:"Already logged today."});
+      else items.push({kind:"lift",title:"Upper body in Fitbod (push + pull)",why:worst>=1?"Keeps upper-body strength. Skip leg work and jumps while your lower body is flagged.":"Keeps upper-body strength."});
+    }
+    if(wd>=5&&!items.length)items.push({kind:"rest",title:"Rest or an easy walk",why:"Weekends stay free."});
+    const careTimes=worst>=6?"twice, about 10 min each":"about 10 min";
+    items.push({kind:"care",title:`${ROUTINES[careKeys[0]].title} + ${ROUTINES[careKeys[1]].title}`,
+      why:(worst>=1?`Focus on ${ROUTINES[careKeys[0]].for}. `:"Protects your feet, calves and hips. ")+(wd>=5?"Optional on weekends, "+careTimes:careTimes[0].toUpperCase()+careTimes.slice(1))+".",routines:careKeys,optional:wd>=5});
+    days.push({date:d,label:i===0?"Today":i===1?"Tomorrow":names[wd],items});
+  }
+  return{days,status};
+}
+
 /* ---------- render ---------- */
 const chip=src=>src==="sample"?'<span class="chip sample">Sample data</span>':'<span class="chip real">'+esc(src)+'</span>';
 function render(){
@@ -476,14 +650,14 @@ function render(){
   $("#todayStats").innerHTML=`<div class="stat"><b>${wkMiles.toFixed(1)}</b><span>miles this week</span></div><div class="stat"><b>${wkLift}</b><span>lift sessions</span></div><div class="stat"><b>${lastNight?fmtHM(lastNight.sec):"–"}</b><span>latest sleep${lastNight?" · "+short(localDate(lastNight.cal)):""}</span></div>`;
   const recent=ot.filter(x=>x.date>=new Date(+today-14*DAY)).reverse();
   $("#otherList").innerHTML=recent.length?recent.map(a=>`<div class="item"><span>${short(a.date)} · ${esc(label(a.type))}${a.name&&a.name!==label(a.type)?` <span class="muted">${esc(a.name)}</span>`:""}</span><span>${fmtHM(a.sec)}${a.miles?` · ${a.miles.toFixed(1)} mi`:""}</span></div>`).join(""):`<p class="muted">Nothing besides runs and Fitbod lifts in the last two weeks.</p>`;
-  const wd=(today.getDay()+6)%7,ranToday=rs.some(x=>ymd(x.date)===ymd(today)),lifted=sess.some(x=>ymd(x.date)===ymd(today)),short6=lastNight&&lastNight.sec<6*3600&&lastNight.cal>=ymd(new Date(+today-DAY));
-  let t,why;
-  if(ranToday){t="Done for today";why="You already ran today."}
-  else if(planned.includes(wd)&&short6){t="Short easy run · ~2 mi";why=`You slept ${fmtHM(lastNight.sec)}, so today's planned run is cut down. Simple placeholder rule; real coaching comes in Phase 3.`}
-  else if(planned.includes(wd)){t="Easy run · ~3 mi";why="Today is a planned run day (Mon/Wed/Fri). Simple placeholder rule; real coaching comes in Phase 3."}
-  else if(!lifted&&wd<5){t="Lift or rest";why="Not a run day. A short strength session or a rest day both fit."}
-  else{t="Rest day";why="Weekends stay free in this plan."}
-  $("#nextTitle").textContent=t;$("#nextWhy").textContent=why;
+  const notes=real.notes||[],status=bodyStatus(notes,today);
+  const plan=buildPlan(status,{now:today,ranToday:rs.some(x=>ymd(x.date)===ymd(today)),liftedToday:sess.some(x=>ymd(x.date)===ymd(today)),
+    lastSleepSec:lastNight?lastNight.sec:null,lastSleepCal:lastNight?lastNight.cal:null});
+  const main=plan.days[0].items.find(x=>x.kind!=="care")||plan.days[0].items[0];
+  $("#nextTitle").textContent=main.title;$("#nextWhy").textContent=main.why;
+  $("#planList").innerHTML=plan.days.map((d,i)=>`<div class="pday${i===0?" today":""}"><span class="dl">${d.label}</span><div class="pitems">`+
+    d.items.map(it=>`<div class="pitem${it.optional?" optional":""}"><span class="k ${it.kind}"></span><div><b>${esc(it.title)}</b><span class="why">${esc(it.why)}</span></div></div>`).join("")+`</div></div>`).join("");
+  renderBody(status,notes);
 
   // Running
   bars($("#milesChart"),bucket(rs,x=>x.miles,8),"var(--run)",v=>v>=10?v.toFixed(0):v.toFixed(1));
@@ -530,9 +704,51 @@ function renderAccount(){
     st.textContent="Last sync "+when(d)+": "+(syncRow.message||"")+(stale&&syncRow.ok?". It's been over a day; check the repo's Actions tab.":"")}
 }
 
+/* ---------- body tab ---------- */
+const noteUI={manualAreas:null,manualSev:false,manualWhen:false};
+function renderNoteForm(){
+  const sug=suggestFromText($("#noteText").value);
+  const chosen=noteUI.manualAreas||new Set(sug.areas);
+  $("#noteAreas").innerHTML=AREAS.map(a=>`<button type="button" class="chipbtn${sug.areas.includes(a.key)?" suggested":""}" data-area="${a.key}" aria-pressed="${chosen.has(a.key)}">${esc(a.label)}</button>`).join("");
+  if(!noteUI.manualSev&&sug.sev!=null)$("#noteSev").value=sug.sev;
+  const v=+$("#noteSev").value;$("#noteSevVal").textContent=v+" · "+sevWord(v);
+  if(!noteUI.manualWhen)$("#noteWhen").value=sug.context;
+}
+function renderBody(status,notes){
+  const rows=AREAS.filter(a=>status.areas[a.key]).map(a=>{const x=status.areas[a.key];
+    return `<div class="srow"><span>${esc(a.label)} <span class="muted small">· ${x.raw}/10 ${short(x.at)}</span></span><span class="sbar"><i class="${x.level>=4?"hi":""}" style="width:${x.level*10}%"></i></span><span class="small">${x.level}/10 now</span></div>`});
+  $("#bodyStatus").innerHTML=rows.length?rows.join(""):`<p class="muted">Nothing flagged in the last 7 days.${notes.length?"":" Add a note above when something hurts or feels good."}</p>`;
+  $("#routineList").innerHTML=Object.values(ROUTINES).map(r=>`<details class="routine"><summary><b>${esc(r.title)}</b> <span class="muted small">for ${esc(r.for)}</span></summary><ol>`+
+    r.items.map(([n,d])=>`<li>${esc(n)}<span>${esc(d)}</span></li>`).join("")+`</ol></details>`).join("");
+  const ctx=Object.fromEntries(CONTEXTS);
+  $("#noteList").innerHTML=!user?`<p class="muted">Sign in to save and see your notes.</p>`:notes.length?notes.slice(0,30).map(n=>`<div class="note"><span>${esc(n.note||"(no text)")}</span><span class="meta">${n.at.toLocaleString(undefined,{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})} · ${n.severity==null?"":n.severity+"/10 · "}${esc(ctx[n.context]||"")}${n.areas.map(k=>` <span class="chip" style="background:var(--sleep-soft);color:var(--sleep)">${esc(AREA[k]?AREA[k].label:k)}</span>`).join("")} <button class="linkbtn" type="button" data-del="${n.id}">Delete</button></span></div>`).join(""):`<p class="muted">No notes yet.</p>`;
+  $("#noteSave").disabled=!user;
+}
+$("#noteWhen").innerHTML=CONTEXTS.map(([k,l])=>`<option value="${k}">${l}</option>`).join("");
+$("#noteText").addEventListener("input",renderNoteForm);
+$("#noteAreas").addEventListener("click",e=>{const b=e.target.closest("[data-area]");if(!b)return;
+  const cur=noteUI.manualAreas||new Set(suggestFromText($("#noteText").value).areas);
+  cur.has(b.dataset.area)?cur.delete(b.dataset.area):cur.add(b.dataset.area);noteUI.manualAreas=cur;renderNoteForm()});
+$("#noteSev").addEventListener("input",()=>{noteUI.manualSev=true;renderNoteForm()});
+$("#noteWhen").addEventListener("change",()=>{noteUI.manualWhen=true});
+$("#noteSave").addEventListener("click",async()=>{const el=$("#noteToast");
+  if(!user)return say(el,"Sign in first.",true);
+  const text=$("#noteText").value.trim(),areas=[...(noteUI.manualAreas||new Set(suggestFromText(text).areas))];
+  if(!text&&!areas.length)return say(el,"Type how you feel or tap an area first.",true);
+  say(el,"Saving…");
+  try{await saveNote({note:text,areas,severity:+$("#noteSev").value,context:$("#noteWhen").value});
+    $("#noteText").value="";$("#noteSev").value=0;Object.assign(noteUI,{manualAreas:null,manualSev:false,manualWhen:false});renderNoteForm();
+    say(el,"Saved. Your plan is updated.")}catch(e){say(el,"Couldn't save: "+(e.message||"unknown error")+". Try again.",true)}});
+$("#noteList").addEventListener("click",async e=>{const b=e.target.closest("[data-del]");if(!b)return;
+  if(b.dataset.confirm!=="1"){b.dataset.confirm="1";b.textContent="Tap again to delete";return}
+  try{await deleteNote(+b.dataset.del)}catch(err){b.textContent="Couldn't delete"}});
+$("#fab").addEventListener("click",()=>{show("body");$("#noteText").focus();window.scrollTo({top:0})});
+document.addEventListener("click",e=>{const g=e.target.closest("[data-goto]");if(g){show(g.dataset.goto);if(g.dataset.goto==="body")$("#noteText").focus()}});
+renderNoteForm();
+
 /* ---------- events ---------- */
 function show(view){document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.view===view)));
-  document.querySelectorAll("main section.view").forEach(s=>s.hidden=s.id!=="view-"+view);local.set("splits.tab",view)}
+  document.querySelectorAll("main section.view").forEach(s=>s.hidden=s.id!=="view-"+view);const fab=document.getElementById("fab");if(fab)fab.hidden=view==="body";local.set("splits.tab",view)}
 document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>show(b.dataset.view)));
 function readFile(input,cb){const f=input.files&&input.files[0];if(!f)return;const fr=new FileReader();fr.onload=()=>cb(String(fr.result),f.name);fr.readAsText(f);input.value=""}
 const say=(el,msg,err)=>{el.className="toast"+(err?" err":"");el.textContent=msg};

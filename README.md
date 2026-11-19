@@ -64,5 +64,19 @@ Read these views, not the raw tables. They de-duplicate across Garmin and Fitbod
 | `splits_activities_all` | Every Garmin activity, plus Fitbod runs that aren't on Garmin (`source` = `garmin` or `fitbod`) |
 | `splits_strength_sets` | Fitbod sets without runs. `weight_lb` is per dumbbell; `multiplier` 2 = a pair, 0 = timed set |
 | `splits_sleep_nights` | Garmin sleep per night (about the last year) |
+| `splits_body_notes` | How your body feels: your words, area tags (`plantar_fascia`, `calves`, `it_band`, `hips`, ...), pain 0–10, and whether it was during/after a run or lift |
 
 **Duplicate rule** (in `supabase/migrations/*_splits_dedup_views.sql`): Fitbod copies runs from the watch, often twice. A Fitbod run is the same run as a Garmin run if it starts within 15 minutes of it, or within 3 hours at a distance within 10%. Fitbod rows with the same start time and a distance within 2% count once. Exercise names are matched as whole words, so "Crunches" is not a run. The raw tables `splits_activities` and `splits_lift_sets` keep everything as imported.
+
+## Weekly plan rules (Body tab and Today)
+- **Current level per area:** the latest note naming it in the last 7 days, easing 1 point every 2 days. A newer "feeling good" note eases it 1 more point.
+- **Grouping:** foot = plantar fascia, calves, shins; hip = IT band, hips, knees.
+- **Run days (Mon/Wed/Fri):**
+  - Worst level 6+: bike or swim instead of running.
+  - Worst level 4–5: a short flat run (~2 mi) only if your first steps feel 3/10 or less, otherwise bike.
+  - Worst level 1–3: an easy ~3 mi run on a flat or soft surface.
+  - Nothing flagged: an easy ~3 mi run, with strides on Wednesday.
+  - Less than 6 h of sleep shortens today's run.
+- **Upper body Tue/Thu (Fitbod):** always kept. Skip leg work while the lower body is flagged.
+- **Daily foot & calf + hip & IT band care:** about 10 min, twice a day at level 6+, optional on weekends.
+- These are simple rules, not medical advice.
