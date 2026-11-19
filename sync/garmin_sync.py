@@ -5,7 +5,8 @@ Environment (set as GitHub repository secrets):
     GARMIN_PERSONAL_API_KEY   your Garmin Personal API key
     SPLITS_SYNC_TOKEN         made on the Splits Connect tab; can only ADD your fitness rows
 Optional:
-    SYNC_DAYS                 days back to pull (default 3; use 365 for a first backfill)
+    SYNC_DAYS                 days of activities to pull (default 3; e.g. 2200 for ~6 years of runs)
+    SLEEP_DAYS                days of sleep to pull (default: same as SYNC_DAYS, capped at 365; 0 skips sleep)
 
 The Supabase URL and publishable key are read from config.js in this repo. The sync
 never holds a key that can read your database: it calls the splits_ingest function,
@@ -146,8 +147,11 @@ def main():
     url, key = read_config()
     db = Ingest(url, key, env("SPLITS_SYNC_TOKEN"))
     days = int(env("SYNC_DAYS", required=False) or 3)
+    sleep_env = env("SLEEP_DAYS", required=False)
+    sleep_days = int(sleep_env) if sleep_env else min(days, 365)
     end = dt.date.today()
     start = end - dt.timedelta(days=days)
+    sleep_start = end - dt.timedelta(days=sleep_days)
 
     def fail(msg):
         try:
@@ -168,14 +172,15 @@ def main():
         acts = gp.pull_activities(auth, start, end)
     except gp.ApiError as e:
         fail(f"Activity pull failed: {str(e).split(':')[0]}")
-    sleep_raw, warnings = gp.pull_sleep(auth, start, end)
+    sleep_raw, warnings = gp.pull_sleep(auth, sleep_start, end) if sleep_days > 0 else ([], [])
 
     arows = [strip(r) for r in (activity_row(a, None) for a in acts) if r]
     srows = [strip(r) for r in sleep_rows(sleep_raw, None)]
     try:
         for i in range(0, len(arows), 100):
             db.call(activities=arows[i:i + 100])
-        msg = f"{start} to {end}: {len(arows)} activities, {len(srows)} sleep nights"
+        msg = f"{start} to {end}: {len(arows)} activities; {len(srows)} sleep nights" + \
+              (f" since {sleep_start}" if sleep_days > 0 else " (sleep skipped)")
         if sleep_raw and not srows:
             msg += " (sleep came back but no nights matched the expected fields)"
         db.call(sleep=srows, ok=True, message=msg)

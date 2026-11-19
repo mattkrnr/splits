@@ -6,8 +6,11 @@ on:
   workflow_dispatch:
     inputs:
       days:
-        description: "Days back to pull (use 365 for a first backfill)"
+        description: "Days of activities to pull (2200 = about 6 years)"
         default: "3"
+      sleep_days:
+        description: "Days of sleep to pull (blank = same as above, max 365; 0 = skip)"
+        default: ""
 
 permissions:
   contents: read
@@ -30,4 +33,5 @@ jobs:
           GARMIN_PERSONAL_API_KEY: ${{ secrets.GARMIN_PERSONAL_API_KEY }}
           SPLITS_SYNC_TOKEN: ${{ secrets.SPLITS_SYNC_TOKEN }}
           SYNC_DAYS: ${{ github.event.inputs.days || '3' }}
+          SLEEP_DAYS: ${{ github.event.inputs.sleep_days || '' }}
         run: python sync/garmin_sync.py
