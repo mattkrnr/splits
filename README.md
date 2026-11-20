@@ -64,6 +64,7 @@ Read these views, not the raw tables. They de-duplicate across Garmin and Fitbod
 | `splits_activities_all` | Every Garmin activity, plus Fitbod runs that aren't on Garmin (`source` = `garmin` or `fitbod`) |
 | `splits_strength_sets` | Fitbod sets without runs. `weight_lb` is per dumbbell; `multiplier` 2 = a pair, 0 = timed set |
 | `splits_sleep_nights` | Garmin sleep per night (about the last year) |
+| `splits_insights` | Insights Claude writes for the Insights tab (title, headline number, text, optional bar chart). Refresh by replacing all of your rows |
 | `splits_body_notes` | How your body feels: your words, area tags (`plantar_fascia`, `calves`, `it_band`, `hips`, ...), pain 0–10, and whether it was during/after a run or lift. `workouts` lists the linked workouts: `garmin:<activity id>` (matches `splits_activities_all.id` where `source = 'garmin'`), `fitbod_run:<start time>` and `fitbod_lift:<YYYY-MM-DD>` (a Fitbod session day) |
 
 **Duplicate rule** (in `supabase/migrations/*_splits_dedup_views.sql`): Fitbod copies runs from the watch, often twice. A Fitbod run is the same run as a Garmin run if it starts within 15 minutes of it, or within 3 hours at a distance within 10%. Fitbod rows with the same start time and a distance within 2% count once. Exercise names are matched as whole words, so "Crunches" is not a run. The raw tables `splits_activities` and `splits_lift_sets` keep everything as imported.

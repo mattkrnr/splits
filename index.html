@@ -162,6 +162,16 @@ select{padding:7px 10px;border:1px solid var(--line);border-radius:8px;backgroun
 .routine li span{color:var(--muted);font-size:13px;display:block}
 .fab{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:6;border:0;border-radius:999px;padding:12px 16px;background:var(--sleep);color:var(--surface);font:600 15px var(--f-body);box-shadow:0 4px 14px rgba(0,0,0,.18);cursor:pointer}
 main .wrap{padding-bottom:84px}
+.igroup{display:flex;flex-direction:column;gap:12px}
+.icard{border-left:4px solid var(--run)}
+.icard.good{border-left-color:var(--lift)}.icard.watch{border-left-color:var(--warn)}.icard.info{border-left-color:var(--run)}
+.icard h4{margin:0;font:700 19px/1.2 var(--f-display);letter-spacing:.02em;text-wrap:balance}
+.istat{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.istat b{font:600 34px/1 var(--f-display);font-variant-numeric:tabular-nums}
+.istat span{color:var(--muted);font-size:13px}
+.ichart{width:100%;height:auto;display:block}
+.ichart text{font:10px var(--f-mono);fill:var(--muted)}
+.ichart text.v{fill:var(--ink)}
 .hblock{display:flex;flex-direction:column;gap:4px;padding:8px 0;border-bottom:1px solid var(--line)}
 .hblock:last-child{border-bottom:0}
 .hblock h4{margin:0;font:600 13px var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
@@ -195,6 +205,7 @@ main .wrap{padding-bottom:84px}
       <button role="tab" id="tab-lift" aria-selected="false" data-view="lift">Strength</button>
       <button role="tab" id="tab-sleep" aria-selected="false" data-view="sleep">Sleep</button>
       <button role="tab" id="tab-body" aria-selected="false" data-view="body">Body</button>
+      <button role="tab" id="tab-insights" aria-selected="false" data-view="insights">Insights</button>
       <button role="tab" id="tab-connect" aria-selected="false" data-view="connect">Connect</button>
       <button role="tab" id="tab-plan" aria-selected="false" data-view="plan">Roadmap</button>
     </nav>
@@ -286,6 +297,12 @@ main .wrap{padding-bottom:84px}
   <div class="panel"><div class="row between"><h3>How your body is doing</h3><span class="muted small">last 7 days</span></div><div class="status" id="bodyStatus"></div></div>
   <div class="panel"><h3>Routines</h3><div id="routineList"></div></div>
   <div class="panel"><h3>Recent notes</h3><div id="noteList"></div></div>
+</section>
+
+<section class="view" id="view-insights" hidden>
+  <div class="row between"><h2>Insights</h2><span class="muted small" id="insMeta"></span></div>
+  <div id="insList" class="igroup"></div>
+  <p class="muted small">Claude writes these by analysing your Garmin, Fitbod, sleep and body notes. To update them, ask Claude in chat to "refresh my Splits insights".</p>
 </section>
 
 <section class="view" id="view-connect" hidden>
@@ -469,16 +486,18 @@ async function fetchAll(table,cols,order){
 async function loadData(){
   loadState="loading";render();
   try{
-    const[a,s,l,st,bn]=await Promise.all([
+    const[a,s,l,st,ins,bn]=await Promise.all([
       fetchAll("splits_activities_all","source,id,start_time,type,name,meters,seconds,avg_hr","start_time"),
       fetchAll("splits_sleep_nights","cal,seconds,deep,light,rem,awake,score","cal"),
       fetchAll("splits_strength_sets","id,performed_at,exercise,reps,weight_lb,warmup,multiplier,duration_s,distance_m","performed_at"),
       sb.from("splits_sync_status").select("last_run,ok,message").maybeSingle(),
+      Promise.resolve().then(()=>sb.from("splits_insights").select("generated_at,sort,topic,tone,title,stat,stat_label,body,series,series_label").order("sort")).catch(()=>null),
       Promise.resolve().then(()=>sb.from("splits_body_notes").select("id,noted_at,note,areas,feeling,severity,context,workouts").order("noted_at",{ascending:false}).limit(300)).catch(()=>null)]);
     real.acts=a.map(r=>({id:r.id,src:r.source,date:new Date(r.start_time),type:r.type,name:r.name||label(r.type),miles:r.meters?r.meters/M_PER_MI:null,sec:r.seconds||0,hr:r.avg_hr}));
     real.sleep=s.map(r=>({cal:r.cal,sec:r.seconds,deep:r.deep,light:r.light,rem:r.rem,awake:r.awake,score:r.score}));
     real.lifts=l.map(r=>({date:new Date(r.performed_at),exercise:r.exercise,reps:r.reps,weight:r.weight_lb,warmup:r.warmup,mult:r.multiplier,dur:r.duration_s,dist:r.distance_m}));
-    real.notes=bn&&!bn.error&&bn.data?bn.data.map(noteFromRow):[];  // notes never block the rest of the app
+    real.notes=bn&&!bn.error&&bn.data?bn.data.map(noteFromRow):[];
+    real.insights=ins&&!ins.error&&ins.data?ins.data:[];  // notes never block the rest of the app
     syncRow=st.data||null;loadState="ready";
   }catch(e){loadState="error";loadErr=e&&e.message||String(e)}
   applyData();
@@ -805,6 +824,7 @@ function render(){
     d.items.map(it=>`<div class="pitem${it.optional?" optional":""}"><span class="k ${it.kind}"></span><div><b>${esc(it.title)}</b><span class="why">${esc(it.why)}</span></div></div>`).join("")+`</div></div>`).join("");
   renderHome(buildHomeSession(status));
   renderBody(status,notes);
+  renderInsights(real.insights||[]);
 
   // Running
   bars($("#milesChart"),bucket(rs,x=>x.miles,8),"var(--run)",v=>v>=10?v.toFixed(0):v.toFixed(1));
@@ -849,6 +869,29 @@ function renderAccount(){
   else{const d=new Date(syncRow.last_run),stale=Date.now()-d>36*3600*1000;
     gc.innerHTML=!syncRow.ok?'<span class="chip" style="background:var(--warn-soft);color:var(--warn)">Last sync failed</span>':stale?'<span class="chip" style="background:var(--warn-soft);color:var(--warn)">Sync is late</span>':'<span class="chip real">Synced</span>';
     st.textContent="Last sync "+when(d)+": "+(syncRow.message||"")+(stale&&syncRow.ok?". It's been over a day; check the repo's Actions tab.":"")}
+}
+
+/* ---------- insights tab ---------- */
+const TOPIC_LABEL={running:"Running",strength:"Strength",sleep:"Sleep",body:"Body",overall:"Overall"};
+function miniBars(series){
+  const W=320,H=96,T=14,B=16,n=series.length,max=Math.max(...series.map(x=>+x.v||0),0)||1,bw=W/n;
+  const fmt=v=>Math.abs(v)>=100?String(Math.round(v)):String(+(+v).toFixed(2));
+  return `<svg class="ichart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Bar chart">`+series.map((x,i)=>{const v=+x.v||0,h=(H-T-B)*v/max,xx=i*bw+bw*.18,w=bw*.64;
+    return `<rect x="${xx}" y="${H-B-h}" width="${w}" height="${Math.max(h,v>0?1:0)}" rx="2" fill="var(--run)" opacity="${i===n-1?1:.55}"/>`+
+      (n<=13?`<text class="v" x="${xx+w/2}" y="${H-B-h-3}" text-anchor="middle">${fmt(v)}</text>`:"")+
+      `<text x="${xx+w/2}" y="${H-3}" text-anchor="middle">${esc(x.l)}</text>`}).join("")+`</svg>`;
+}
+function renderInsights(list){
+  if(!user){$("#insList").innerHTML=`<p class="muted">Sign in to see your insights.</p>`;$("#insMeta").textContent="";return}
+  if(!list.length){$("#insList").innerHTML=`<div class="panel"><p>No insights yet. Ask Claude in chat to analyse your Splits data, and they'll appear here.</p></div>`;$("#insMeta").textContent="";return}
+  const at=new Date(Math.max(...list.map(x=>+new Date(x.generated_at))));
+  $("#insMeta").textContent="Updated "+at.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
+  let last="";
+  $("#insList").innerHTML=list.map(x=>{const head=x.topic!==last?`<h3 style="margin-top:8px">${esc(TOPIC_LABEL[x.topic]||x.topic)}</h3>`:"";last=x.topic;
+    return head+`<div class="panel icard ${esc(x.tone)}"><h4>${esc(x.title)}</h4>`+
+      (x.stat?`<div class="istat"><b>${esc(x.stat)}</b><span>${esc(x.stat_label||"")}</span></div>`:"")+
+      `<p>${esc(x.body)}</p>`+
+      (Array.isArray(x.series)&&x.series.length?`<div><p class="muted small" style="margin-bottom:4px">${esc(x.series_label||"")}</p>${miniBars(x.series)}</div>`:"")+`</div>`}).join("");
 }
 
 /* ---------- body tab ---------- */
