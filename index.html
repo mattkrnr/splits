@@ -139,7 +139,13 @@ select{padding:7px 10px;border:1px solid var(--line);border-radius:8px;backgroun
 .sevrow input[type=range]{flex:1 1 180px;accent-color:var(--sleep)}
 .sevval{font:600 22px/1 var(--f-display);font-variant-numeric:tabular-nums;min-width:4.5em}
 .plan{display:flex;flex-direction:column}
-.pday{display:grid;grid-template-columns:6.4em 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.pday{padding:9px 0;border-bottom:1px solid var(--line)}
+.pday summary{display:grid;grid-template-columns:4.2em 1fr;gap:10px;align-items:baseline;cursor:pointer;list-style:none}
+.pday summary::-webkit-details-marker{display:none}
+.pline{display:flex;flex-wrap:wrap;gap:4px 14px;min-width:0}
+.pi{display:inline-flex;align-items:baseline;gap:6px}
+.pi.optional{color:var(--muted)}
+.pwhy{margin:6px 0 0 calc(4.2em + 10px);padding-left:16px;color:var(--muted);font-size:13px;display:flex;flex-direction:column;gap:4px}
 .pday:last-child{border-bottom:0}
 .pday .dl{font:600 15px var(--f-display);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .pday.today .dl{color:var(--run)}
@@ -162,6 +168,13 @@ select{padding:7px 10px;border:1px solid var(--line);border-radius:8px;backgroun
 .routine li span{color:var(--muted);font-size:13px;display:block}
 .fab{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:6;border:0;border-radius:999px;padding:12px 16px;background:var(--sleep);color:var(--surface);font:600 15px var(--f-body);box-shadow:0 4px 14px rgba(0,0,0,.18);cursor:pointer}
 main .wrap{padding-bottom:84px}
+.fold>summary{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;cursor:pointer;list-style:none}
+.fold>summary::-webkit-details-marker{display:none}
+.fold .ftitle{font:600 13px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.fold .ftitle::after{content:" ▸"}
+.fold[open] .ftitle::after{content:" ▾"}
+.levels{display:flex;flex-direction:column;gap:6px}
+.lvlname{flex:0 0 9.5em;font-size:13px}
 .igroup{display:flex;flex-direction:column;gap:12px}
 .icard{border-left:4px solid var(--run)}
 .icard.good{border-left-color:var(--lift)}.icard.watch{border-left-color:var(--warn)}.icard.info{border-left-color:var(--run)}
@@ -227,21 +240,20 @@ main .wrap{padding-bottom:84px}
     <p class="muted" id="nextWhy"></p>
   </div>
   <div class="panel">
-    <div class="row between"><h3>Plan, next 7 days</h3><button class="linkbtn" type="button" data-goto="body">How I feel</button></div>
+    <div class="row between"><h3>Next 7 days</h3><span class="muted small">+ home session daily · tap a day for why</span></div>
     <div class="plan" id="planList"></div>
-    <p class="muted small">Suggestions follow simple rules based on your body notes. They aren't medical advice: for sharp pain, swelling, or pain lasting 2+ weeks, see a physical therapist.</p>
   </div>
-  <div class="panel" id="homePanel">
-    <div class="row between"><h3>After-work session</h3><span class="muted small" id="homeMeta"></span></div>
+  <details class="panel fold" id="homePanel">
+    <summary><span class="ftitle">After-work session</span><span class="muted small" id="homeMeta"></span></summary>
     <div id="homeList"></div>
-    <p class="muted small">At home with a chair, a step, a towel and a ball or frozen bottle. Stop anything that pushes pain above 4/10. Ticks reset each day.</p>
-  </div>
+    <p class="muted small">Chair, step, towel, ball or frozen bottle. Stop anything that pushes pain above 4/10.</p>
+  </details>
   <div class="panel">
-    <div class="row between"><h3>This week</h3><span class="muted" style="font-size:12px">Dashed = planned run day · ☾ = sleep</span></div>
+    <h3>This week</h3>
     <div class="week" id="weekStrip"></div>
   </div>
   <div class="stats" id="todayStats"></div>
-  <div class="panel"><div class="row between"><h3>Other activity, last 14 days</h3><span id="otherChip"></span></div><div class="list" id="otherList"></div></div>
+  <div class="panel" id="otherPanel"><div class="row between"><h3>Other activity, last 14 days</h3><span id="otherChip"></span></div><div class="list" id="otherList"></div></div>
 </section>
 
 <section class="view" id="view-run" hidden>
@@ -289,13 +301,13 @@ main .wrap{padding-bottom:84px}
     <h3><label for="noteText">How do you feel?</label></h3>
     <textarea id="noteText" placeholder="e.g. Left heel sore on first steps this morning, IT band fine"></textarea>
     <div><p class="muted small" style="margin-bottom:6px">Areas (dashed = suggested from your words; tap to confirm)</p><div class="chips" id="noteAreas"></div></div>
-    <div class="sevrow"><label for="noteSev" class="muted small">Pain 0–10</label><input type="range" id="noteSev" min="0" max="10" step="1" value="0"><span class="sevval" id="noteSevVal">0</span></div>
+    <div><p class="muted small" style="margin-bottom:6px">Pain 0–10 for each area</p><div class="levels" id="noteLevels"></div></div>
     <div class="row"><label for="noteWhen" class="muted small">When</label><select id="noteWhen"></select></div>
     <div id="noteWkWrap"><p class="muted small" style="margin-bottom:6px">Link to workouts (last 2 days; tap to add or remove)</p><div class="chips" id="noteWorkouts"></div></div>
     <div class="row"><button class="btn" id="noteSave" type="button">Save note</button><span class="toast" id="noteToast" role="status"></span></div>
   </div>
   <div class="panel"><div class="row between"><h3>How your body is doing</h3><span class="muted small">last 7 days</span></div><div class="status" id="bodyStatus"></div></div>
-  <div class="panel"><h3>Routines</h3><div id="routineList"></div></div>
+  <div class="panel"><h3>Routines</h3><div id="routineList"></div><p class="muted small">The plan follows simple rules based on your notes, not medical advice. For sharp pain, swelling, or pain lasting 2+ weeks, see a physical therapist.</p></div>
   <div class="panel"><h3>Recent notes</h3><div id="noteList"></div></div>
 </section>
 
@@ -492,7 +504,7 @@ async function loadData(){
       fetchAll("splits_strength_sets","id,performed_at,exercise,reps,weight_lb,warmup,multiplier,duration_s,distance_m","performed_at"),
       sb.from("splits_sync_status").select("last_run,ok,message").maybeSingle(),
       Promise.resolve().then(()=>sb.from("splits_insights").select("generated_at,sort,topic,tone,title,stat,stat_label,body,series,series_label").order("sort")).catch(()=>null),
-      Promise.resolve().then(()=>sb.from("splits_body_notes").select("id,noted_at,note,areas,feeling,severity,context,workouts").order("noted_at",{ascending:false}).limit(300)).catch(()=>null)]);
+      Promise.resolve().then(()=>sb.from("splits_body_notes").select("id,noted_at,note,areas,feeling,severity,context,workouts,area_levels").order("noted_at",{ascending:false}).limit(300)).catch(()=>null)]);
     real.acts=a.map(r=>({id:r.id,src:r.source,date:new Date(r.start_time),type:r.type,name:r.name||label(r.type),miles:r.meters?r.meters/M_PER_MI:null,sec:r.seconds||0,hr:r.avg_hr}));
     real.sleep=s.map(r=>({cal:r.cal,sec:r.seconds,deep:r.deep,light:r.light,rem:r.rem,awake:r.awake,score:r.score}));
     real.lifts=l.map(r=>({date:new Date(r.performed_at),exercise:r.exercise,reps:r.reps,weight:r.weight_lb,warmup:r.warmup,mult:r.multiplier,dur:r.duration_s,dist:r.distance_m}));
@@ -572,13 +584,13 @@ async function importFitbod(rows){
   await inChunks(rows.map(r=>({user_id:uid,performed_at:r.date.toISOString(),exercise:r.exercise,reps:r.reps,weight_lb:r.weight,warmup:r.warmup,multiplier:r.mult,duration_s:r.dur,distance_m:r.dist})),500,c=>sb.from("splits_lift_sets").insert(c));
   await loadData();
 }
-const noteFromRow=r=>({id:r.id,at:new Date(r.noted_at),note:r.note||"",areas:r.areas||[],feeling:r.feeling,severity:r.severity,context:r.context,workouts:Array.isArray(r.workouts)?r.workouts:[]});
+const noteFromRow=r=>({id:r.id,at:new Date(r.noted_at),note:r.note||"",areas:r.areas||[],feeling:r.feeling,severity:r.severity,context:r.context,workouts:Array.isArray(r.workouts)?r.workouts:[],levels:r.area_levels&&typeof r.area_levels==="object"?r.area_levels:{}});
 async function loadNotes(){
-  const{data,error}=await sb.from("splits_body_notes").select("id,noted_at,note,areas,feeling,severity,context,workouts").order("noted_at",{ascending:false}).limit(300);
+  const{data,error}=await sb.from("splits_body_notes").select("id,noted_at,note,areas,feeling,severity,context,workouts,area_levels").order("noted_at",{ascending:false}).limit(300);
   if(error)throw error;real.notes=data.map(noteFromRow);render();
 }
 async function saveNote(n){
-  const{error}=await sb.from("splits_body_notes").insert({user_id:user.id,note:n.note,areas:n.areas,feeling:sevFeeling(n.severity),severity:n.severity,context:n.context,workouts:n.workouts||[]});
+  const{error}=await sb.from("splits_body_notes").insert({user_id:user.id,note:n.note,areas:n.areas,feeling:sevFeeling(n.severity),severity:n.severity,context:n.context,workouts:n.workouts||[],area_levels:n.levels||{}});
   if(error)throw error;await loadNotes();
 }
 async function deleteNote(id){const{error}=await sb.from("splits_body_notes").delete().eq("id",id);if(error)throw error;await loadNotes()}
@@ -649,10 +661,8 @@ const CONTEXTS=[["none","Not during exercise"],["during_run","During a run"],["a
 const sevWord=s=>s==null?"":s===0?"feels good":s<=2?"a little tight":s<=4?"sore":s<=6?"hurts":"bad";
 const sevFeeling=s=>s===0?"good":s<=1?"ok":s<=2?"tight":s<=4?"sore":"pain";
 
-// Read free text and suggest areas, a 0-10 score and when it happened. The person confirms with taps.
-function suggestFromText(text){
-  const t=String(text||"");
-  const areas=AREAS.filter(a=>a.re.test(t)).map(a=>a.key);
+// 0-10 score implied by a piece of text, or null if it doesn't say.
+function scoreText(t){
   let sev=null;
   const explicit=t.match(/\b(10(?:\.0+)?|[0-9](?:\.\d+)?)\s*(?:\/\s*10|out of 10)\b/i);
   if(explicit)sev=Math.min(10,Math.round(parseFloat(explicit[1])));  // 8.5/10 -> 9 (slider is whole numbers)
@@ -663,30 +673,49 @@ function suggestFromText(text){
   else if(/\b(sore|achy|aches?|stiff)\b/i.test(t))sev=3;
   else if(/\b(tight|tender)\b/i.test(t))sev=2;
   else if(/\b(good|great|fresh|strong|fine|awesome|amazing|recovered)\b/i.test(t))sev=0;
+  else if(/\b(ok|okay|alright|all right)\b/i.test(t))sev=1;
   if(sev!=null&&!explicit&&sev>0){
     if(/\b(really|very|super|killing)\b/i.test(t))sev=Math.min(10,sev+1);
     if(/\b(slight(ly)?|a (little|bit)|mild(ly)?|minor)\b/i.test(t))sev=Math.max(1,sev-1);
+  }
+  return sev;
+}
+// Read free text and suggest areas, a score per area (from the sentence that names it) and when it happened.
+function suggestFromText(text){
+  const t=String(text||"");
+  const areas=AREAS.filter(a=>a.re.test(t)).map(a=>a.key);
+  const sev=scoreText(t),levels={};
+  for(const sentence of t.split(/[!?;\n]+|\.(?!\d)/)){   // a period before a digit is a decimal point, not a sentence end
+    if(!AREAS.some(a=>a.re.test(sentence)))continue;
+    // Score each clause that names an area; fall back to the sentence, then the whole note.
+    for(const clause of sentence.split(/,|\b(?:and|but)\b/i)){
+      const here=AREAS.filter(a=>a.re.test(clause)).map(a=>a.key);if(!here.length)continue;
+      const v=scoreText(clause)??scoreText(sentence)??sev;if(v==null)continue;
+      for(const k of here)levels[k]=Math.max(levels[k]??0,v);
+    }
   }
   let context="none";
   if(/\b(during|mid)[- ]?(my |the )?(run|running)\b|\bwhile running\b/i.test(t))context="during_run";
   else if(/\b(after|post)[- ]?(my |the )?(run|running)\b/i.test(t))context="after_run";
   else if(/\b(during|mid)[- ]?(my |the )?(lift|lifting|workout|gym|squats?|deadlifts?)\b|\bwhile lifting\b/i.test(t))context="during_lift";
   else if(/\b(after|post)[- ]?(my |the )?(lift|lifting|workout|gym)\b/i.test(t))context="after_lift";
-  return{areas,sev,context};
+  return{areas,sev,levels,context};
 }
 
 // Current level per area: the most recent note that names it within 7 days, easing by 1 point every 2 days.
 // A plain "feeling good" note (no areas, score 0) newer than an area's note eases that area by another point.
+const noteLevel=(n,k)=>n.levels&&n.levels[k]!=null?n.levels[k]:n.severity;
 function bodyStatus(notes,now=new Date()){
   const recent=notes.filter(n=>now-n.at<=7*DAY&&n.at<=now).sort((a,b)=>b.at-a.at);
   const lastGood=recent.find(n=>n.severity===0&&!n.areas.length);
   const out={};
   for(const a of AREAS){
-    const n=recent.find(x=>x.areas.includes(a.key)&&x.severity!=null);
+    const n=recent.find(x=>x.areas.includes(a.key)&&noteLevel(x,a.key)!=null);
     if(!n)continue;
-    let level=n.severity-Math.floor((now-n.at)/(2*DAY));
+    const raw=noteLevel(n,a.key);
+    let level=raw-Math.floor((now-n.at)/(2*DAY));
     if(lastGood&&lastGood.at>n.at)level-=1;
-    out[a.key]={level:Math.max(0,level),raw:n.severity,at:n.at,note:n.note};
+    out[a.key]={level:Math.max(0,level),raw,at:n.at,note:n.note};
   }
   const grp=g=>Math.max(0,...AREAS.filter(a=>a.group===g&&out[a.key]).map(a=>out[a.key].level));
   return{areas:out,foot:grp("foot"),hip:grp("hip"),other:grp("other")};
@@ -756,22 +785,22 @@ function buildPlan(status,{now=new Date(),ranToday=false,liftedToday=false,lastS
     const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+i),wd=(d.getDay()+6)%7,items=[];
     if([0,2,4].includes(wd)){
       if(i===0&&ranToday)items.push({kind:"done",title:"Run done",why:"Already logged today."});
-      else if(f>=6)items.push({kind:"walk",title:"No running: home session instead, plus an easy walk if your foot allows",why:`Flagged: ${flagged}. Walk only if it stays at 3/10 or less; no running until it settles below 4.`});
-      else if(worst>=6)items.push({kind:"walk",title:"No running: easy walk, 30–45 min",why:`Flagged: ${flagged}. Walking keeps some cardio without the impact; no running until it settles below 4.`});
-      else if(worst>=4)items.push({kind:"run",title:"Short flat run, 1–2 mi, or a 30–40 min walk",why:`Flagged: ${flagged}. Run only if your first steps this morning feel 3/10 or less; otherwise walk.`});
-      else if(worst>=1)items.push({kind:"run",title:"Easy run, about 3 mi, flat or soft surface",why:`Flagged: ${flagged}. Keep it easy and stop if it climbs.`});
-      else if(wd===2)items.push({kind:"run",title:"Easy run, about 3 mi, plus 4 × 20 s strides",why:"Nothing flagged this week."});
-      else items.push({kind:"run",title:"Easy run, about 3 mi",why:"Nothing flagged this week."});
-      if(i===0&&shortSleep&&!ranToday&&worst<6){const it=items[items.length-1];it.title=it.title.replace(/about 3 mi/,"about 2 mi");it.why+=` Short sleep last night (${fmtHM(lastSleepSec)}), so it's cut down.`}
+      else if(f>=6)items.push({kind:"walk",title:"No run · home session",why:`Flagged: ${flagged}. Add an easy walk only if your foot stays at 3/10 or less; no running until it settles below 4.`});
+      else if(worst>=6)items.push({kind:"walk",title:"No run · walk 30–45 min",why:`Flagged: ${flagged}. Walking keeps some cardio without the impact; no running until it settles below 4.`});
+      else if(worst>=4)items.push({kind:"run",title:"Short run 1–2 mi, or walk",why:`Flagged: ${flagged}. Run only if your first steps this morning feel 3/10 or less; otherwise walk.`});
+      else if(worst>=1)items.push({kind:"run",title:"Easy run ~3 mi, flat",why:`Flagged: ${flagged}. Keep it easy and stop if it climbs.`});
+      else if(wd===2)items.push({kind:"run",title:"Easy run ~3 mi + strides",why:"Nothing flagged this week."});
+      else items.push({kind:"run",title:"Easy run ~3 mi",why:"Nothing flagged this week."});
+      if(i===0&&shortSleep&&!ranToday&&worst<6){const it=items[items.length-1];it.title=it.title.replace(/~3 mi/,"~2 mi");it.why+=` Short sleep last night (${fmtHM(lastSleepSec)}), so it's cut down.`}
     }
     if(wd===1||wd===3){
       if(i===0&&liftedToday)items.push({kind:"done",title:"Lift done",why:"Already logged today."});
-      else items.push({kind:"lift",title:"Upper body in Fitbod (push + pull)",why:worst>=1?"Keeps upper-body strength. Skip leg work and jumps while your lower body is flagged.":"Keeps upper-body strength."});
+      else items.push({kind:"lift",title:"Upper body (Fitbod)",why:worst>=1?"Keeps upper-body strength. Skip leg work and jumps while your lower body is flagged.":"Keeps upper-body strength."});
     }
-    if(wd>=5&&!items.length)items.push({kind:"rest",title:"Rest or an easy walk",why:"Weekends stay free."});
-    items.push({kind:"care",title:`After-work home session, about ${home.minutes} min`,
-      why:`Starts with ${home.focus.toLowerCase()}.`+(f>=6?" Also do the plantar fascia and calf stretches first thing in the morning (5 min).":"")+(wd>=5?" Optional on weekends.":" The full list is on Today under After-work session."),optional:wd>=5});
-    days.push({date:d,label:i===0?"Today":i===1?"Tomorrow":names[wd],items});
+    if(wd>=5&&!items.length)items.push({kind:"rest",title:"Rest or easy walk",why:"Weekends stay free."});
+    items.push({kind:"care",title:`Home session ~${home.minutes} min`,
+      why:`Starts with ${home.focus.toLowerCase()}.`+(f>=6?" Also do the plantar fascia and calf stretches first thing in the morning (5 min).":"")+(wd>=5?" Optional on weekends.":" The list is under After-work session."),optional:wd>=5});
+    days.push({date:d,label:i===0?"Today":names[wd],items});
   }
   return{days,status};
 }
@@ -814,14 +843,15 @@ function render(){
   const wkMiles=rs.filter(x=>x.date>=w0).reduce((a,x)=>a+x.miles,0),wkLift=sess.filter(x=>x.date>=w0).length,lastNight=state.sleep[state.sleep.length-1];
   $("#todayStats").innerHTML=`<div class="stat"><b>${wkMiles.toFixed(1)}</b><span>miles this week</span></div><div class="stat"><b>${wkLift}</b><span>lift sessions</span></div><div class="stat"><b>${lastNight?fmtHM(lastNight.sec):"–"}</b><span>latest sleep${lastNight?" · "+short(localDate(lastNight.cal)):""}</span></div>`;
   const recent=ot.filter(x=>x.date>=new Date(+today-14*DAY)).reverse();
-  $("#otherList").innerHTML=recent.length?recent.map(a=>`<div class="item"><span>${short(a.date)} · ${state.gSrc==="sample"?esc(label(a.type)):`<button class="rowlink" type="button" data-wk="${esc(actKey(a))}">${esc(label(a.type))}</button>${nmark(actKey(a))}`}${a.name&&a.name!==label(a.type)?` <span class="muted">${esc(a.name)}</span>`:""}</span><span>${fmtHM(a.sec)}${a.miles?` · ${a.miles.toFixed(1)} mi`:""}</span></div>`).join(""):`<p class="muted">Nothing besides runs and Fitbod lifts in the last two weeks.</p>`;
+  $("#otherList").innerHTML=recent.length?recent.map(a=>`<div class="item"><span>${short(a.date)} · ${state.gSrc==="sample"?esc(label(a.type)):`<button class="rowlink" type="button" data-wk="${esc(actKey(a))}">${esc(label(a.type))}</button>${nmark(actKey(a))}`}${a.name&&a.name!==label(a.type)?` <span class="muted">${esc(a.name)}</span>`:""}</span><span>${fmtHM(a.sec)}${a.miles?` · ${a.miles.toFixed(1)} mi`:""}</span></div>`).join(""):"";$("#otherPanel").hidden=!recent.length;
   const notes=real.notes||[],status=bodyStatus(notes,today);
   const plan=buildPlan(status,{now:today,ranToday:rs.some(x=>ymd(x.date)===ymd(today)),liftedToday:sess.some(x=>ymd(x.date)===ymd(today)),
     lastSleepSec:lastNight?lastNight.sec:null,lastSleepCal:lastNight?lastNight.cal:null});
   const main=plan.days[0].items.find(x=>x.kind!=="care")||plan.days[0].items[0];
   $("#nextTitle").textContent=main.title;$("#nextWhy").textContent=main.why;
-  $("#planList").innerHTML=plan.days.map((d,i)=>`<div class="pday${i===0?" today":""}"><span class="dl">${d.label}</span><div class="pitems">`+
-    d.items.map(it=>`<div class="pitem${it.optional?" optional":""}"><span class="k ${it.kind}"></span><div><b>${esc(it.title)}</b><span class="why">${esc(it.why)}</span></div></div>`).join("")+`</div></div>`).join("");
+  $("#planList").innerHTML=plan.days.map((d,i)=>`<details class="pday${i===0?" today":""}"><summary><span class="dl">${d.label}</span><span class="pline">`+
+    d.items.filter(it=>it.kind!=="care").map(it=>`<span class="pi${it.optional?" optional":""}"><span class="k ${it.kind}"></span>${esc(it.title)}</span>`).join("")+`</span></summary><ul class="pwhy">`+
+    d.items.map(it=>`<li><b>${esc(it.title)}:</b> ${esc(it.why)}</li>`).join("")+`</ul></details>`).join("");
   renderHome(buildHomeSession(status));
   renderBody(status,notes);
   renderInsights(real.insights||[]);
@@ -895,13 +925,21 @@ function renderInsights(list){
 }
 
 /* ---------- body tab ---------- */
-const noteUI={manualAreas:null,manualSev:false,manualWhen:false,manualLinks:null,pinned:null};
+const noteUI={manualAreas:null,levels:{},manualWhen:false,manualLinks:null,pinned:null};
+// Slider value: what you set, else what your words suggest for that area, else 0 for areas your words don't mention.
+function formLevel(k,sug=suggestFromText($("#noteText").value)){
+  if(noteUI.levels[k]!=null)return noteUI.levels[k];
+  if(k==="_overall")return sug.sev??0;
+  if(sug.levels[k]!=null)return sug.levels[k];
+  return sug.areas.includes(k)?(sug.sev??0):0;   // an area you tapped that your words don't mention starts at 0
+}
 function renderNoteForm(){
   const sug=suggestFromText($("#noteText").value);
   const chosen=noteUI.manualAreas||new Set(sug.areas);
   $("#noteAreas").innerHTML=AREAS.map(a=>`<button type="button" class="chipbtn${sug.areas.includes(a.key)?" suggested":""}" data-area="${a.key}" aria-pressed="${chosen.has(a.key)}">${esc(a.label)}</button>`).join("");
-  if(!noteUI.manualSev&&sug.sev!=null)$("#noteSev").value=sug.sev;
-  const v=+$("#noteSev").value;$("#noteSevVal").textContent=v+" · "+sevWord(v);
+  const keys=chosen.size?[...chosen]:["_overall"];
+  $("#noteLevels").innerHTML=keys.map(k=>{const v=formLevel(k,sug),lab=k==="_overall"?"Overall":AREA[k].label;
+    return `<div class="sevrow"><label for="lvl-${k}" class="lvlname">${esc(lab)}</label><input type="range" id="lvl-${k}" data-lvl="${k}" min="0" max="10" step="1" value="${v}"><span class="sevval" data-lvlval="${k}">${v} · ${sevWord(v)}</span></div>`}).join("");
   if(!noteUI.manualWhen)$("#noteWhen").value=sug.context;
   renderNoteWorkouts();
 }
@@ -919,7 +957,8 @@ function renderNoteWorkouts(){
 }
 function renderHome(h){
   const day=ymd(new Date());let done={};try{done=JSON.parse(localStorage.getItem("splits.home."+day))||{}}catch(e){}
-  $("#homeMeta").textContent=`about ${h.minutes} min`;
+  const all=h.blocks.flatMap(b=>b.items),ticked=all.filter(it=>done[it.name]).length;
+  $("#homeMeta").textContent=`~${h.minutes} min · ${h.focus.toLowerCase()} first`+(ticked?` · ${ticked}/${all.length} done`:"");
   $("#homeList").innerHTML=h.blocks.map((b,bi)=>`<div class="hblock"><h4>${esc(b.title)}</h4>`+b.items.map((it,ii)=>{const id=`home-${b.key}-${ii}`,on=!!done[it.name];
     return `<label class="hitem${on?" done":""}" for="${id}"><input type="checkbox" id="${id}" data-home="${esc(it.name)}"${on?" checked":""}><span><b>${esc(it.name)}</b><span class="d">${esc(it.dose)} · ~${it.min} min</span></span></label>`}).join("")+`</div>`).join("");
 }
@@ -927,7 +966,7 @@ $("#homeList").addEventListener("change",e=>{const c=e.target.closest("[data-hom
   const key="splits.home."+ymd(new Date());let done={};try{done=JSON.parse(localStorage.getItem(key))||{}}catch(err){}
   if(c.checked)done[c.dataset.home]=1;else delete done[c.dataset.home];
   try{localStorage.setItem(key,JSON.stringify(done))}catch(err){}
-  c.closest(".hitem").classList.toggle("done",c.checked)});
+  c.closest(".hitem").classList.toggle("done",c.checked);render()});
 $("#noteWorkouts").addEventListener("click",e=>{const b=e.target.closest("[data-link]");if(!b)return;
   const cur=new Set(chosenLinks());cur.has(b.dataset.link)?cur.delete(b.dataset.link):cur.add(b.dataset.link);noteUI.manualLinks=cur;renderNoteWorkouts()});
 let sheetKey=null;
@@ -936,7 +975,7 @@ function openWorkout(key){
   $("#wkTitle").textContent=w.kind==="lift"?"Lift session":w.label.replace(/^./,c=>c.toUpperCase());
   $("#wkMeta").textContent=wkWhen(w.at)+" · "+w.detail;
   const ns=notesFor(key);
-  $("#wkNotes").innerHTML=ns.length?ns.map(n=>`<div class="bnote"><span>${esc(n.note||"(no text)")}</span><span class="meta">${esc(wkWhen(n.at))}${n.severity==null?"":" · "+n.severity+"/10"}${n.areas.map(k=>` <span class="chip" style="background:var(--sleep-soft);color:var(--sleep)">${esc(AREA[k]?AREA[k].label:k)}</span>`).join("")}</span></div>`).join(""):`<p class="muted">No notes linked to this workout yet.</p>`;
+  $("#wkNotes").innerHTML=ns.length?ns.map(n=>`<div class="bnote"><span>${esc(n.note||"(no text)")}</span><span class="meta">${esc(wkWhen(n.at))}${areaChips(n)}</span></div>`).join(""):`<p class="muted">No notes linked to this workout yet.</p>`;
   $("#wkAdd").hidden=!user;$("#wkSheet").hidden=false;$("#wkClose").focus();
 }
 function closeSheet(){$("#wkSheet").hidden=true;sheetKey=null}
@@ -947,6 +986,7 @@ $("#wkAdd").addEventListener("click",()=>{const w=workoutList().find(x=>x.key===
   noteUI.pinned=w;noteUI.manualLinks=new Set([w.key]);
   if(!noteUI.manualWhen){$("#noteWhen").value=w.kind==="lift"?"after_lift":w.kind==="run"?"after_run":"other";noteUI.manualWhen=true}
   closeSheet();show("body");renderNoteWorkouts();$("#noteText").focus();window.scrollTo({top:0})});
+const areaChips=n=>n.areas.length?n.areas.map(k=>{const v=noteLevel(n,k);return ` <span class="chip" style="background:var(--sleep-soft);color:var(--sleep)">${esc(AREA[k]?AREA[k].label:k)}${v!=null?" "+v:""}</span>`}).join(""):(n.severity!=null?` · overall ${n.severity}/10`:"");
 function renderBody(status,notes){
   const rows=AREAS.filter(a=>status.areas[a.key]).map(a=>{const x=status.areas[a.key];
     return `<div class="srow"><span>${esc(a.label)} <span class="muted small">· ${x.raw}/10 ${short(x.at)}</span></span><span class="sbar"><i class="${x.level>=4?"hi":""}" style="width:${x.level*10}%"></i></span><span class="small">${x.level}/10 now</span></div>`});
@@ -954,7 +994,7 @@ function renderBody(status,notes){
   $("#routineList").innerHTML=Object.values(ROUTINES).map(r=>`<details class="routine"><summary><b>${esc(r.title)}</b> <span class="muted small">for ${esc(r.for)}</span></summary><ol>`+
     r.items.map(([n,d])=>`<li>${esc(n)}<span>${esc(d)}</span></li>`).join("")+`</ol></details>`).join("");
   const ctx=Object.fromEntries(CONTEXTS);
-  $("#noteList").innerHTML=!user?`<p class="muted">Sign in to save and see your notes.</p>`:notes.length?notes.slice(0,30).map(n=>`<div class="bnote"><span>${esc(n.note||"(no text)")}</span><span class="meta">${n.at.toLocaleString(undefined,{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})} · ${n.severity==null?"":n.severity+"/10 · "}${esc(ctx[n.context]||"")}${n.areas.map(k=>` <span class="chip" style="background:var(--sleep-soft);color:var(--sleep)">${esc(AREA[k]?AREA[k].label:k)}</span>`).join("")}${(n.workouts||[]).map(w=>` <button class="rowlink small" type="button" data-wk="${esc(w.key)}">${esc(w.label)}</button>`).join("")} <button class="linkbtn" type="button" data-del="${n.id}">Delete</button></span></div>`).join(""):`<p class="muted">No notes yet.</p>`;
+  $("#noteList").innerHTML=!user?`<p class="muted">Sign in to save and see your notes.</p>`:notes.length?notes.slice(0,30).map(n=>`<div class="bnote"><span>${esc(n.note||"(no text)")}</span><span class="meta">${n.at.toLocaleString(undefined,{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})} · ${esc(ctx[n.context]||"")}${areaChips(n)}${(n.workouts||[]).map(w=>` <button class="rowlink small" type="button" data-wk="${esc(w.key)}">${esc(w.label)}</button>`).join("")} <button class="linkbtn" type="button" data-del="${n.id}">Delete</button></span></div>`).join(""):`<p class="muted">No notes yet.</p>`;
   $("#noteSave").disabled=!user;
   renderNoteWorkouts();
 }
@@ -963,7 +1003,8 @@ $("#noteText").addEventListener("input",renderNoteForm);
 $("#noteAreas").addEventListener("click",e=>{const b=e.target.closest("[data-area]");if(!b)return;
   const cur=noteUI.manualAreas||new Set(suggestFromText($("#noteText").value).areas);
   cur.has(b.dataset.area)?cur.delete(b.dataset.area):cur.add(b.dataset.area);noteUI.manualAreas=cur;renderNoteForm()});
-$("#noteSev").addEventListener("input",()=>{noteUI.manualSev=true;renderNoteForm()});
+$("#noteLevels").addEventListener("input",e=>{const r=e.target.closest("[data-lvl]");if(!r)return;   // update the label only, so dragging isn't interrupted
+  const v=+r.value;noteUI.levels[r.dataset.lvl]=v;const out=document.querySelector(`[data-lvlval="${r.dataset.lvl}"]`);if(out)out.textContent=v+" · "+sevWord(v)});
 $("#noteWhen").addEventListener("change",()=>{noteUI.manualWhen=true});
 $("#noteSave").addEventListener("click",async()=>{const el=$("#noteToast");
   if(!user)return say(el,"Sign in first.",true);
@@ -971,8 +1012,10 @@ $("#noteSave").addEventListener("click",async()=>{const el=$("#noteToast");
   if(!text&&!areas.length)return say(el,"Type how you feel or tap an area first.",true);
   say(el,"Saving…");
   const c=noteCandidates(),links=[...chosenLinks(c)].map(k=>c.find(w=>w.key===k)).filter(Boolean).map(w=>({key:w.key,at:w.at.toISOString(),label:w.label}));
-  try{await saveNote({note:text,areas,severity:+$("#noteSev").value,context:$("#noteWhen").value,workouts:links});
-    $("#noteText").value="";$("#noteSev").value=0;Object.assign(noteUI,{manualAreas:null,manualSev:false,manualWhen:false,manualLinks:null,pinned:null});renderNoteForm();
+  const sug=suggestFromText(text),levels=Object.fromEntries(areas.map(k=>[k,formLevel(k,sug)]));
+  const severity=areas.length?Math.max(...Object.values(levels)):formLevel("_overall",sug);
+  try{await saveNote({note:text,areas,levels,severity,context:$("#noteWhen").value,workouts:links});
+    $("#noteText").value="";Object.assign(noteUI,{manualAreas:null,levels:{},manualWhen:false,manualLinks:null,pinned:null});renderNoteForm();
     say(el,"Saved"+(links.length?` and linked to ${links.length} workout${links.length>1?"s":""}`:"")+". Your plan is updated.")}catch(e){say(el,"Couldn't save: "+(e.message||"unknown error")+". Try again.",true)}});
 $("#noteList").addEventListener("click",async e=>{const b=e.target.closest("[data-del]");if(!b)return;
   if(b.dataset.confirm!=="1"){b.dataset.confirm="1";b.textContent="Tap again to delete";return}

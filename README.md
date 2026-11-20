@@ -65,13 +65,13 @@ Read these views, not the raw tables. They de-duplicate across Garmin and Fitbod
 | `splits_strength_sets` | Fitbod sets without runs. `weight_lb` is per dumbbell; `multiplier` 2 = a pair, 0 = timed set |
 | `splits_sleep_nights` | Garmin sleep per night (about the last year) |
 | `splits_insights` | Insights Claude writes for the Insights tab (title, headline number, text, optional bar chart). Refresh by replacing all of your rows |
-| `splits_body_notes` | How your body feels: your words, area tags (`plantar_fascia`, `calves`, `it_band`, `hips`, ...), pain 0–10, and whether it was during/after a run or lift. `workouts` lists the linked workouts: `garmin:<activity id>` (matches `splits_activities_all.id` where `source = 'garmin'`), `fitbod_run:<start time>` and `fitbod_lift:<YYYY-MM-DD>` (a Fitbod session day) |
+| `splits_body_notes` | How your body feels: your words, area tags (`plantar_fascia`, `calves`, `it_band`, `hips`, ...), pain 0–10 per area in `area_levels` (`severity` is the highest), and whether it was during/after a run or lift. `workouts` lists the linked workouts: `garmin:<activity id>` (matches `splits_activities_all.id` where `source = 'garmin'`), `fitbod_run:<start time>` and `fitbod_lift:<YYYY-MM-DD>` (a Fitbod session day) |
 
 **Duplicate rule** (in `supabase/migrations/*_splits_dedup_views.sql`): Fitbod copies runs from the watch, often twice. A Fitbod run is the same run as a Garmin run if it starts within 15 minutes of it, or within 3 hours at a distance within 10%. Fitbod rows with the same start time and a distance within 2% count once. Exercise names are matched as whole words, so "Crunches" is not a run. The raw tables `splits_activities` and `splits_lift_sets` keep everything as imported.
 
 ## Weekly plan rules (Body tab and Today)
 - **Equipment:** no gym, no pool, no easy bike access. Swaps are walks or the home session, never bike or swim.
-- **Current level per area:** the latest note naming it in the last 7 days, easing 1 point every 2 days. A newer "feeling good" note eases it 1 more point. Decimal scores like 8.5/10 round to whole numbers.
+- **Current level per area:** that area's own score (`area_levels`) from the latest note naming it in the last 7 days, easing 1 point every 2 days. A newer "feeling good" note eases it 1 more point. Decimal scores like 8.5/10 round to whole numbers.
 - **Grouping:** foot = plantar fascia, calves, shins; hip = IT band, hips, knees.
 - **Run days (Mon/Wed/Fri):**
   - Foot 6+: no running; do the home session, plus an easy walk only if the foot stays at 3/10 or less.
